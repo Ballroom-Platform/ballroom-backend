@@ -1,6 +1,6 @@
 import ballerina/time;
 
-type User record {|
+public type User record {|
     readonly string user_id;
     string username;
     string name;
@@ -9,7 +9,7 @@ type User record {|
     Moderator[] moderators;         //ONE TO MANY RELATIONSHIP WITH MODERATOR
 |};
 
-type Organization record {|
+public type Organization record {|
     readonly string org_id;
     string name;
     string category;
@@ -17,13 +17,13 @@ type Organization record {|
     Contest[] contests;     //ONE TO MANY RELATIONSHIP WITH CONTEST
 |};
 
-type Moderator record {|
+public type Moderator record {|
     readonly moderator_id;
     User user;
     Contest contest;        //MANY TO ONE RELATIONSHIP WITH CONTEST
 |};
 
-type Contest record {|
+public type Contest record {|
     readonly string contest_id;
     Organization organization;      //MANY TO ONE RELATIONSHIP WITH ORGANIZATION
     string name;
@@ -34,20 +34,20 @@ type Contest record {|
     Contestant[] contestants;     //ONE TO MANY RELATIONSHIP WITH MODERATOR
 |};
 
-type Contestant record {|
+public type Contestant record {|
     readonly User user;
     readonly Contest contest;       //MANY TO ONE RELATIONSHIP WITH CONTEST
     decimal total_score;
 |};
 
 //CHALLENGE_TYPE HAS TO BE EITHER PUBLIC OR PRIVATE
-enum Challenge_Type {
+public enum Challenge_Type {
     PUBLIC,
     PRIVATE
 }
 
 
-type Challenge record {|
+public type Challenge record {|
     readonly string challenge_id;
     string name;
     Challenge_Type type_of_challenge;
@@ -59,7 +59,7 @@ type Challenge record {|
     Contest[] contests;     //MANY TO MANY RELATIONSHIP WITH CONTEST
 |};
 
-type Submission record {|
+public type Submission record {|
     readonly string submission_id;
     string input;
     decimal score;
@@ -68,7 +68,7 @@ type Submission record {|
     Contestant contestant;      //MANY TO ONE RELATIONSHIP WITH CONTESTANT
 |};
 
-type TestCase record {|
+public type TestCase record {|
     readonly string testcase_id;
     Challenge challenge;        //MANY TO ONE RELATIONSHIP WITH CHALLENGE
     string input;
@@ -76,7 +76,7 @@ type TestCase record {|
     decimal weight;
 |};
 
-type Environment record {|
+public type Environment record {|
     readonly environtment_id;
     string name;
     string description;
