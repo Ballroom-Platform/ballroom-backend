@@ -6,10 +6,12 @@ type User record {|
     string name;
     Organization[] organizations;   //MANY TO MANY RELATIONSHIP WITH ORGANIZATION
     Contestant[] contestants;       //ONE TO MANY RELATIONSHIP WITH CONTESTANT
+    Moderator[] moderators;         //ONE TO MANY RELATIONSHIP WITH MODERATOR
 |};
 
 type Organization record {|
     readonly string org_id;
+    string name;
     string category;
     User[] members;       //MANY TO MANY RELATIONSHIP WITH USER
     Contest[] contests;     //ONE TO MANY RELATIONSHIP WITH CONTEST
@@ -17,6 +19,7 @@ type Organization record {|
 
 type Moderator record {|
     readonly moderator_id;
+    User user;
     Contest contest;        //MANY TO ONE RELATIONSHIP WITH CONTEST
 |};
 
@@ -75,6 +78,8 @@ type TestCase record {|
 
 type Environment record {|
     readonly environtment_id;
+    string name;
+    string description;
     string stored_url;
     Challenge[] challenges;     //ONE TO MANY RELATIONSHIP WITH CHALLENGE (Same environment maybe used for multiple challenges for common configurations)
 |};
