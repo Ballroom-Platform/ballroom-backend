@@ -7,6 +7,7 @@ public type User record {|
     Organization[] organizations;   //MANY TO MANY RELATIONSHIP WITH ORGANIZATION
     Contestant[] contestants;       //ONE TO MANY RELATIONSHIP WITH CONTESTANT
     Moderator[] moderators;         //ONE TO MANY RELATIONSHIP WITH MODERATOR
+    Challenge[]  authoredChallenges;        //ONE TO MANY RELATIONSHIP WITH CHALLENGE
 |};
 
 public type Organization record {|
@@ -15,6 +16,7 @@ public type Organization record {|
     string category;
     User[] members;       //MANY TO MANY RELATIONSHIP WITH USER
     Contest[] contests;     //ONE TO MANY RELATIONSHIP WITH CONTEST
+    Challenge[]  poolOfChallenges;        //ONE TO MANY RELATIONSHIP WITH CHALLENGE
 |};
 
 public type Moderator record {|
@@ -51,6 +53,8 @@ public type Challenge record {|
     readonly string challenge_id;
     string name;
     Challenge_Type type_of_challenge;
+    User author;        //ONE TO ONE RELATIONSHIP WITH USER
+    Organization owner;     //ONE TO ONE RELATIONSHIP WITH ORGANIZATION
     string editorial;
     string problem_description;
     Environment environment;        //MANY TO ONE RELATIONSHIP WITH ENVIRONMENT
