@@ -1,5 +1,6 @@
 import ballerina/http;
 import ballerina/mime;
+import ballerina/regex;
 import ballerina/io;
 
 # A service representing a network-accessible API
@@ -23,7 +24,15 @@ service / on new http:Listener(9090) {
                 // Writes the incoming stream to a file using the `io:fileWriteBlocksFromStream` API
                 // by providing the file location to which the content should be written.
                 stream<byte[], io:Error?> streamer = check item.getByteStream();
-                check io:fileWriteBlocksFromStream("./files/swdwdwdwdwd.zip", streamer);
+
+                string fileName = "";
+                string | error contentDisposition = item.getHeader("Content-Disposition");
+                if(contentDisposition is string){
+                    string[] fileNameArray = regex:split(contentDisposition, "filename=\"");
+                    fileName = regex:replaceAll(fileNameArray[1], "\"", "");
+
+                }
+                check io:fileWriteBlocksFromStream("./files/"  + fileName + ".zip", streamer);
                 check streamer.close();
             }
         }
