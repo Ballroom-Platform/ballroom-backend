@@ -14,9 +14,11 @@ service / on new http:Listener(9090) {
         mime:Entity[] bodyParts = check request.getBodyParts();
         foreach mime:Entity item in bodyParts {
 
+            // check if the body part is a zipped file or normal text
             if item.getContentType().length() == 0  {
                 io:println(item.getText());
             }
+            // body part is a zipped file
             else {
                 // Writes the incoming stream to a file using the `io:fileWriteBlocksFromStream` API
                 // by providing the file location to which the content should be written.
