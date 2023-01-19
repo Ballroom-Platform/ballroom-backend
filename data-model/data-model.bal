@@ -89,4 +89,14 @@ public type Environment record {|
 |};
 
 
+// ------------------------------------------------
+
+public const QUEUE_NAME = "RequestQueue";
+
+public type SubmissionMessage record {
+    string userId;
+    string contestId;
+    string challengeId;
+};
+
 
