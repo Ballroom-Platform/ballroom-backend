@@ -32,8 +32,9 @@ service / on new http:Listener(9090) {
             if item.getContentType().length() == 0  {
                 string contentDispositionString = item.getContentDisposition().toString();
                 // get the relevant key for the value provided
-                string[] key = regex:split(contentDispositionString, "name=\"");
-                subMsg[key[0]] = check item.getText();
+                string[] keyArray = regex:split(contentDispositionString, "name=\"");
+                string key = regex:replaceAll(keyArray[1], "\"", "");
+                subMsg[key] = check item.getText();
             }
             // body part is a zipped file
             else {

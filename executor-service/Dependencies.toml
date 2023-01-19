@@ -10,6 +10,7 @@ dependencies-toml-version = "2"
 org = "ballerina"
 name = "auth"
 version = "2.4.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "crypto"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -23,6 +24,7 @@ dependencies = [
 org = "ballerina"
 name = "cache"
 version = "3.2.2"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "task"},
@@ -33,6 +35,7 @@ dependencies = [
 org = "ballerina"
 name = "constraint"
 version = "1.0.1"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
@@ -50,6 +53,7 @@ dependencies = [
 org = "ballerina"
 name = "file"
 version = "1.4.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -63,6 +67,7 @@ dependencies = [
 org = "ballerina"
 name = "http"
 version = "2.4.6"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "auth"},
 	{org = "ballerina", name = "cache"},
@@ -111,6 +116,7 @@ version = "0.0.0"
 org = "ballerina"
 name = "jwt"
 version = "2.4.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "cache"},
 	{org = "ballerina", name = "crypto"},
@@ -126,6 +132,7 @@ dependencies = [
 org = "ballerina"
 name = "lang.__internal"
 version = "0.0.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.object"}
@@ -135,6 +142,7 @@ dependencies = [
 org = "ballerina"
 name = "lang.array"
 version = "0.0.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.__internal"}
@@ -144,6 +152,7 @@ dependencies = [
 org = "ballerina"
 name = "lang.decimal"
 version = "0.0.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
@@ -160,11 +169,13 @@ dependencies = [
 org = "ballerina"
 name = "lang.object"
 version = "0.0.0"
+scope = "testOnly"
 
 [[package]]
 org = "ballerina"
 name = "lang.runtime"
 version = "0.0.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
@@ -189,6 +200,7 @@ dependencies = [
 org = "ballerina"
 name = "log"
 version = "2.4.1"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -200,19 +212,18 @@ dependencies = [
 org = "ballerina"
 name = "mime"
 version = "2.4.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.int"}
-]
-modules = [
-	{org = "ballerina", packageName = "mime", moduleName = "mime"}
 ]
 
 [[package]]
 org = "ballerina"
 name = "oauth2"
 version = "2.4.1"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "cache"},
 	{org = "ballerina", name = "crypto"},
@@ -233,6 +244,7 @@ dependencies = [
 org = "ballerina"
 name = "os"
 version = "1.4.0"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"}
@@ -246,14 +258,12 @@ dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.string"}
 ]
-modules = [
-	{org = "ballerina", packageName = "regex", moduleName = "regex"}
-]
 
 [[package]]
 org = "ballerina"
 name = "task"
 version = "2.2.2"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "time"}
@@ -283,6 +293,7 @@ dependencies = [
 org = "ballerina"
 name = "url"
 version = "2.2.3"
+scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
@@ -340,20 +351,18 @@ modules = [
 
 [[package]]
 org = "wso2"
-name = "upload_service"
+name = "executor_service"
 version = "0.1.0"
 dependencies = [
 	{org = "ballerina", name = "http"},
 	{org = "ballerina", name = "io"},
-	{org = "ballerina", name = "mime"},
-	{org = "ballerina", name = "regex"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "rabbitmq"},
 	{org = "wso2", name = "data_model"}
 ]
 modules = [
-	{org = "wso2", packageName = "upload_service", moduleName = "upload_service"}
+	{org = "wso2", packageName = "executor_service", moduleName = "executor_service"}
 ]
 
 
