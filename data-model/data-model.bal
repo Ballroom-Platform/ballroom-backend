@@ -97,6 +97,8 @@ public type SubmissionMessage record {
     string userId;
     string contestId;
     string challengeId;
+    string fileName;
+    string fileExtension;
 };
 
 

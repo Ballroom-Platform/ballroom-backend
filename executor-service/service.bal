@@ -22,34 +22,36 @@ service rabbitmq:Service on channelListener {
 }
 
 function handleEvent(data_model:SubmissionMessage submissionEvent) returns error? {
+
+    string fileNameWithExtension = submissionEvent.fileName + submissionEvent.fileExtension;
     
     // get the file
-    string|error storedLocation = getAndStoreFile(submissionEvent.fileLocation);
+    string|error storedLocation = getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension);
 
     // unzip the submissionZip
     // string subProblemDir = "problem_" + string:substring(event.problemId, 0, <int>string:indexOf(event.problemId, ".", 0)) + "_" +
     // string:substring(event.problemId, <int>string:indexOf(event.problemId, ".", 0) + 1, string:length(event.problemId));
     // string submissionDir = check file:joinPath(tempDir, regex:split(event.wso2Email, "@")[0] + "_" + subProblemDir);
     // string[] unzipArguments = ["unzip -d " + submissionDir + " " + submissionZipFilePath];
-    string[] unzipArguments = ["unzip -d ./storedFiles/" + submissionEvent.fileLocation];
+    string[] unzipArguments = ["unzip ../storedFiles/" + fileNameWithExtension + " -d ../storedFiles/" + submissionEvent.fileName + "/"];
 
     _ = check executeCommand(unzipArguments);
 
 
     // replace the test cases
     string testsDirPath = getTestDirPath(submissionEvent.challengeId);
-    check file:remove("./storedFiles/" + submissionEvent.fileLocation + "/tests", file:RECURSIVE);
-    check file:copy(check storedLocation, testsDirPath);
+    check file:remove("../storedFiles/" + submissionEvent.fileName + "/tests", file:RECURSIVE);
+    check file:copy(testsDirPath,check storedLocation + "/tests/");
 
     // run the test cases
-    string[] testCommand = ["bal test"];
-    string[] executeCommandResult = check executeCommand(testCommand, check storedLocation);
+    string[] testCommand = ["cd " + check storedLocation +  " && bal test"];
+    string[] executeCommandResult = check executeCommand(testCommand);
 
     // calculate a score from the output
     float score = calculateScore(executeCommandResult);
 
     // output to a file (for now)
-    string[] content = [submissionEvent.userId + "|" + submissionEvent.challengeId + "|" + submissionEvent.contestId + "|" + submissionEvent.fileLocation + " ----> " + score.toString()];
+    string[] content = [submissionEvent.userId + "|" + submissionEvent.challengeId + "|" + submissionEvent.contestId + "|" + fileNameWithExtension + " ----> " + score.toString()];
     io:Error? fileWriteLines = io:fileWriteLines("./scores/scores.txt", content);
 
 }
@@ -60,14 +62,18 @@ function calculateScore(string[] executeCommandResult) returns float {
 
 function getTestDirPath(string challengeId) returns string {
     // hardcoding a value for now (ideally should be generated using the challenge id)
-    return "./challengetests/tests";
+    return "./challengetests/tests/";
 }
 
-function getAndStoreFile(string fileLocation) returns string|error{
-
+function getAndStoreFile(string fileName, string fileExtension) returns string|error{
+    string fileLocation = fileName + fileExtension;
     // should get the file from the given location and store it somewhere, then return where you stored it
-    check file:copy("../upload-service/files/" + fileLocation,  "./storedFiles/" + fileLocation, file:REPLACE_EXISTING);
-    return "./storedFiles/" + fileLocation;
+    boolean dirExists = check file:test("../storedFiles", file:EXISTS);
+    if(!dirExists){
+        check file:createDir("../storedFiles", file:RECURSIVE);
+    }
+    check file:copy("../upload-service/files/" + fileLocation,  "../storedFiles/" + fileLocation, file:REPLACE_EXISTING);
+    return "../storedFiles/" + fileName + "/";
 }
 
 # Description

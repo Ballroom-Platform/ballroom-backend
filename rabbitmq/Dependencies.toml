@@ -102,11 +102,24 @@ modules = [
 
 [[package]]
 org = "wso2"
+name = "data_model"
+version = "0.1.0"
+dependencies = [
+	{org = "ballerina", name = "time"},
+	{org = "ballerinai", name = "observe"}
+]
+modules = [
+	{org = "wso2", packageName = "data_model", moduleName = "data_model"}
+]
+
+[[package]]
+org = "wso2"
 name = "rabbitmq"
 version = "0.1.0"
 dependencies = [
 	{org = "ballerinai", name = "observe"},
-	{org = "ballerinax", name = "rabbitmq"}
+	{org = "ballerinax", name = "rabbitmq"},
+	{org = "wso2", name = "data_model"}
 ]
 modules = [
 	{org = "wso2", packageName = "rabbitmq", moduleName = "rabbitmq"}
