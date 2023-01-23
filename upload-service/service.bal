@@ -24,7 +24,7 @@ service / on new http:Listener(9090) {
         
         mime:Entity[] bodyParts = check request.getBodyParts();
 
-        data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: ""};
+        data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileLocation: ""};
 
         foreach mime:Entity item in bodyParts {
 
@@ -50,6 +50,8 @@ service / on new http:Listener(9090) {
 
                 }
                 check io:fileWriteBlocksFromStream("./files/"  + fileName + ".zip", streamer);
+                // subMsg.fileLocation = "./files/"  + fileName + ".zip";
+                subMsg.fileLocation = fileName + ".zip";
                 check streamer.close();
             }
         }
