@@ -227,11 +227,13 @@ dependencies = [
 org = "ballerina"
 name = "mime"
 version = "2.4.0"
-scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.int"}
+]
+modules = [
+	{org = "ballerina", packageName = "mime", moduleName = "mime"}
 ]
 
 [[package]]
@@ -352,6 +354,17 @@ modules = [
 ]
 
 [[package]]
+org = "ballerinax"
+name = "redis"
+version = "2.3.1"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"}
+]
+modules = [
+	{org = "ballerinax", packageName = "redis", moduleName = "redis"}
+]
+
+[[package]]
 org = "wso2"
 name = "data_model"
 version = "0.1.0"
@@ -373,9 +386,11 @@ dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "jballerina.java.arrays"},
+	{org = "ballerina", name = "mime"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "rabbitmq"},
+	{org = "ballerinax", name = "redis"},
 	{org = "wso2", name = "data_model"}
 ]
 modules = [

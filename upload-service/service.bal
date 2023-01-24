@@ -4,6 +4,7 @@ import ballerina/regex;
 import ballerina/io;
 import ballerinax/rabbitmq;
 import wso2/data_model;
+import ballerinax/redis;
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -21,10 +22,27 @@ service / on new http:Listener(9090) {
     # + request - the input solution file as a multipart request with userId, challengeId & the solution as a zip file
     # + return - response message from server
     resource function post uploadSolution(http:Request request) returns string|error {
+
+        // The Redis Configuration
+
+        redis:ConnectionConfig redisConfig = {
+            host: "127.0.0.1:6379",
+            password: "",
+            options: {
+                connectionPooling: true,
+                isClusterConnection: false,
+                ssl: false,
+                startTls: false,
+                verifyPeer: false,
+                connectionTimeout: 500
+            }
+        };
+
+        redis:Client redisConn = check new (redisConfig);
         
         mime:Entity[] bodyParts = check request.getBodyParts();
 
-        data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: ""};
+        data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: "", redisKey: ""};
 
         foreach mime:Entity item in bodyParts {
 
@@ -50,9 +68,16 @@ service / on new http:Listener(9090) {
 
                 }
                 check io:fileWriteBlocksFromStream("./files/"  + fileName + ".zip", streamer);
+                byte[] submissionFile = check io:fileReadBytes("./files/"  + fileName + ".zip");
+                byte[] base64Encoded = <byte[]>(check mime:base64Encode(submissionFile));
+                string base64EncodedString = check string:fromBytes(base64Encoded);
+
+                string _ = check redisConn->set(fileName, base64EncodedString);
+                redisConn.stop();
                 // subMsg.fileLocation = "./files/"  + fileName + ".zip";
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
+                subMsg.redisKey = fileName;
                 check streamer.close();
             }
         }

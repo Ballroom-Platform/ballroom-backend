@@ -2,6 +2,8 @@ import ballerina/io;
 import ballerinax/rabbitmq;
 import wso2/data_model;
 import ballerina/file;
+import ballerina/mime;
+import ballerinax/redis;
 
 
 // const SCORE_OUTPUT_FILEPATH = "";
@@ -22,25 +24,25 @@ service rabbitmq:Service on channelListener {
 }
 
 function handleEvent(data_model:SubmissionMessage submissionEvent) returns error? {
-
+    string basePath = "../storedFiles/";
     string fileNameWithExtension = submissionEvent.fileName + submissionEvent.fileExtension;
     
     // get the file
-    string|error storedLocation = getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension);
+    string|error storedLocation = getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.redisKey);
 
     // unzip the submissionZip
     // string subProblemDir = "problem_" + string:substring(event.problemId, 0, <int>string:indexOf(event.problemId, ".", 0)) + "_" +
     // string:substring(event.problemId, <int>string:indexOf(event.problemId, ".", 0) + 1, string:length(event.problemId));
     // string submissionDir = check file:joinPath(tempDir, regex:split(event.wso2Email, "@")[0] + "_" + subProblemDir);
     // string[] unzipArguments = ["unzip -d " + submissionDir + " " + submissionZipFilePath];
-    string[] unzipArguments = ["unzip ../storedFiles/" + fileNameWithExtension + " -d ../storedFiles/" + submissionEvent.fileName + "/"];
+    string[] unzipArguments = ["unzip " + basePath + fileNameWithExtension + " -d " + basePath + submissionEvent.fileName + "/"];
 
     _ = check executeCommand(unzipArguments);
 
 
     // replace the test cases
     string testsDirPath = getTestDirPath(submissionEvent.challengeId);
-    check file:remove("../storedFiles/" + submissionEvent.fileName + "/tests", file:RECURSIVE);
+    check file:remove(basePath + submissionEvent.fileName + "/tests", file:RECURSIVE);
     check file:copy(testsDirPath,check storedLocation + "/tests/");
 
     // run the test cases
@@ -65,15 +67,41 @@ function getTestDirPath(string challengeId) returns string {
     return "./challengetests/tests/";
 }
 
-function getAndStoreFile(string fileName, string fileExtension) returns string|error{
+function getAndStoreFile(string fileName, string fileExtension, string redisKey) returns string|error{
+    string basePath = "../storedFiles";
     string fileLocation = fileName + fileExtension;
     // should get the file from the given location and store it somewhere, then return where you stored it
-    boolean dirExists = check file:test("../storedFiles", file:EXISTS);
+    boolean dirExists = check file:test(basePath, file:EXISTS);
     if(!dirExists){
-        check file:createDir("../storedFiles", file:RECURSIVE);
+        check file:createDir(basePath, file:RECURSIVE);
     }
-    check file:copy("../upload-service/files/" + fileLocation,  "../storedFiles/" + fileLocation, file:REPLACE_EXISTING);
-    return "../storedFiles/" + fileName + "/";
+    //check file:copy("../upload-service/files/" + fileLocation,  "../storedFiles/" + fileLocation, file:REPLACE_EXISTING);
+
+    // The Redis Configuration
+    redis:ConnectionConfig redisConfig = {
+            host: "127.0.0.1:6379",
+            password: "",
+            options: {
+                connectionPooling: true,
+                isClusterConnection: false,
+                ssl: false,
+                startTls: false,
+                verifyPeer: false,
+                connectionTimeout: 500
+            }
+        };
+
+    redis:Client redisConn = check new (redisConfig);
+    string? redisString = check redisConn->get(redisKey);
+    redisConn.stop();
+    if (redisString is ()) {
+        return error("Submission missing in datastore.");
+    }
+    byte[] byteArray = string:toBytes(redisString);
+    byte[] byteStream = <byte[]>(check mime:base64Decode(byteArray));
+    check io:fileWriteBytes(basePath + "/" + fileLocation, byteStream);
+
+    return basePath + "/" + fileName + "/";
 }
 
 # Description
