@@ -67,10 +67,8 @@ service / on new http:Listener(9090) {
                     fileName = regex:replaceAll(fileNameArray[1], "\"", "");
 
                 }
-                check io:fileWriteBlocksFromStream("./files/"  + fileName + ".zip", streamer);
-                byte[] submissionFile = check io:fileReadBytes("./files/"  + fileName + ".zip");
-                byte[] base64Encoded = <byte[]>(check mime:base64Encode(submissionFile));
-                string base64EncodedString = check string:fromBytes(base64Encoded);
+
+                string base64EncodedString = check convertByteArrayStreamToString(streamer);
 
                 string _ = check redisConn->set(fileName, base64EncodedString);
                 redisConn.stop();
@@ -89,4 +87,6 @@ service / on new http:Listener(9090) {
     
         return "Recieved Submission.";
     }
+
 }
+
