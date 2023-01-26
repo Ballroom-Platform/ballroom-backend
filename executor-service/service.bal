@@ -5,6 +5,9 @@ import ballerina/file;
 import ballerina/mime;
 import ballerinax/redis;
 
+configurable string redisHost = ?;
+configurable string redisPassword = ?;
+
 
 // const SCORE_OUTPUT_FILEPATH = "";
 
@@ -28,7 +31,7 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     string fileNameWithExtension = submissionEvent.fileName + submissionEvent.fileExtension;
     
     // get the file
-    string|error storedLocation = getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.redisKey);
+    string|error storedLocation = check getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.redisKey);
 
     // unzip the submissionZip
     // string subProblemDir = "problem_" + string:substring(event.problemId, 0, <int>string:indexOf(event.problemId, ".", 0)) + "_" +
@@ -79,15 +82,15 @@ function getAndStoreFile(string fileName, string fileExtension, string redisKey)
 
     // The Redis Configuration
     redis:ConnectionConfig redisConfig = {
-            host: "127.0.0.1:6379",
-            password: "",
+            host: redisHost,
+            password: redisPassword,
             options: {
                 connectionPooling: true,
                 isClusterConnection: false,
                 ssl: false,
                 startTls: false,
                 verifyPeer: false,
-                connectionTimeout: 500
+                connectionTimeout: 50000
             }
         };
 

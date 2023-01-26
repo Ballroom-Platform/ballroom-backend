@@ -6,6 +6,10 @@ import ballerinax/rabbitmq;
 import wso2/data_model;
 import ballerinax/redis;
 
+
+configurable string redisHost = ?;
+configurable string redisPassword = ?;
+
 # A service representing a network-accessible API
 # bound to port `9090`.
 service / on new http:Listener(9090) {
@@ -26,15 +30,15 @@ service / on new http:Listener(9090) {
         // The Redis Configuration
 
         redis:ConnectionConfig redisConfig = {
-            host: "127.0.0.1:6379",
-            password: "",
+            host: redisHost,
+            password: redisPassword,
             options: {
                 connectionPooling: true,
                 isClusterConnection: false,
                 ssl: false,
                 startTls: false,
                 verifyPeer: false,
-                connectionTimeout: 500
+                connectionTimeout: 50000
             }
         };
 
