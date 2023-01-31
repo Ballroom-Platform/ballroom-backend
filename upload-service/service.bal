@@ -7,6 +7,7 @@ import ballerinax/redis;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 import ballerina/sql;
+import ballerina/uuid;
 import wso2/data_model;
 
 configurable string USER = ?;
@@ -15,12 +16,12 @@ configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
 
-
+final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
 # A service representing a network-accessible API
 # bound to port `9090`.
 service / on new http:Listener(9090) {
 
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+
 
     private final rabbitmq:Client rabbitmqClient;
 
@@ -94,8 +95,8 @@ service / on new http:Listener(9090) {
                 // subMsg.fileLocation = "./files/"  + fileName + ".zip";
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
+                subMsg.submissionId = uuid:createType1AsString();
                 string submissionId = check addSubmission(subMsg, fileReadBytes);
-                subMsg.submissionId = submissionId;
 
                 check streamer.close();
             }
@@ -110,7 +111,10 @@ service / on new http:Listener(9090) {
         return "Recieved Submission.";
     }
 
-    isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error {
+
+}
+
+isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error {
     sql:ExecutionResult result = check dbClient->execute(`
         INSERT INTO Submissions (user_id, contest_id, challenge_id, filename, file_extension, submission_file)
         VALUES (${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
@@ -123,6 +127,3 @@ service / on new http:Listener(9090) {
         return error("Unable to obtain last insert ID");
     }
 }
-
-}
-
