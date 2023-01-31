@@ -20,7 +20,7 @@ configurable string DATABASE = ?;
 # bound to port `9090`.
 service / on new http:Listener(9090) {
 
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database="Company");
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
 
     private final rabbitmq:Client rabbitmqClient;
 
@@ -110,9 +110,7 @@ service / on new http:Listener(9090) {
         return "Recieved Submission.";
     }
 
-}
-
-isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error {
+    isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error {
     sql:ExecutionResult result = check dbClient->execute(`
         INSERT INTO Submissions (user_id, contest_id, challenge_id, filename, file_extension, submission_file)
         VALUES (${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
@@ -125,3 +123,6 @@ isolated function addSubmission(data_model:SubmissionMessage submissionMessage, 
         return error("Unable to obtain last insert ID");
     }
 }
+
+}
+
