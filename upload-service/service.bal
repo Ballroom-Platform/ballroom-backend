@@ -114,7 +114,7 @@ service / on new http:Listener(9090) {
 
 isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error {
     sql:ExecutionResult result = check dbClient->execute(`
-        INSERT INTO Submissions (user_id, contest_id, challenge_id, filename, file_extension)
+        INSERT INTO Submissions (user_id, contest_id, challenge_id, filename, file_extension, submission_file)
         VALUES (${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
         ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, ${submissionFile})
     `);
