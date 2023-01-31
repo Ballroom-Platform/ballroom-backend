@@ -3,7 +3,6 @@ import ballerina/mime;
 import ballerina/regex;
 import ballerina/io;
 import ballerinax/rabbitmq;
-import ballerinax/redis;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 import ballerina/sql;
@@ -16,7 +15,7 @@ configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
 
-final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+
 # A service representing a network-accessible API
 # bound to port `9090`.
 service / on new http:Listener(9090) {
@@ -115,11 +114,13 @@ service / on new http:Listener(9090) {
 }
 
 isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult result = check dbClient->execute(`
-        INSERT INTO Submissions (user_id, contest_id, challenge_id, filename, file_extension, submission_file)
-        VALUES (${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
+        INSERT INTO submissions (submission_id, user_id, contest_id, challenge_id, filename, file_extension, submission_file)
+        VALUES (${submissionMessage.submissionId}, ${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
         ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, ${submissionFile})
     `);
+    check dbClient.close();
     int|string? lastInsertId = result.lastInsertId;
     if lastInsertId is string {
         return lastInsertId;
