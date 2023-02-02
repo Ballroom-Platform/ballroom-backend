@@ -3,6 +3,7 @@ import ballerinax/rabbitmq;
 import ballerina/file;
 import wso2/data_model;
 import ballerinax/mysql;
+import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 
 
 configurable string USER = ?;
@@ -12,8 +13,6 @@ configurable int PORT = ?;
 configurable string DATABASE = ?;
 
 // const SCORE_OUTPUT_FILEPATH = "";
-
-final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
 
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener= new(rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
@@ -149,8 +148,10 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
 }
 
 isolated function getFileFromDB(string submissionId) returns byte[]|error {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     byte[] submissionFileBlob = check dbClient->queryRow(
-        `SELECT submission_file FROM Submissions WHERE submission_id = ${submissionId}`
+        `SELECT submission_file FROM submissions WHERE submission_id = ${submissionId}`
     );
+    check dbClient.close();
     return submissionFileBlob;
 }
