@@ -16,10 +16,6 @@ configurable int PORT = ?;
 configurable string DATABASE = ?;
 
 
-
-configurable string redisHost = ?;
-configurable string redisPassword = ?;
-
 # A service representing a network-accessible API
 # bound to port `9090`.
 service / on new http:Listener(9090) {
@@ -100,7 +96,7 @@ service / on new http:Listener(9090) {
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
                 subMsg.submissionId = uuid:createType1AsString();
-                string submissionId = check addSubmission(subMsg, fileReadBytes);
+                check addSubmission(subMsg, fileReadBytes);
 
                 check streamer.close();
             }
@@ -118,18 +114,12 @@ service / on new http:Listener(9090) {
 
 }
 
-isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error {
+isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-    sql:ExecutionResult result = check dbClient->execute(`
+    sql:ExecutionResult _ = check dbClient->execute(`
         INSERT INTO submissions (submission_id, user_id, contest_id, challenge_id, filename, file_extension, submission_file)
         VALUES (${submissionMessage.submissionId}, ${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
         ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, ${submissionFile})
     `);
     check dbClient.close();
-    int|string? lastInsertId = result.lastInsertId;
-    if lastInsertId is string {
-        return lastInsertId;
-    } else {
-        return error("Unable to obtain last insert ID");
-    }
 }
