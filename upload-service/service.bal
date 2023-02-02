@@ -37,26 +37,14 @@ service / on new http:Listener(9090) {
     # A resource for uploading solutions to challenges
     # + request - the input solution file as a multipart request with userId, challengeId & the solution as a zip file
     # + return - response message from server
-    resource function post uploadSolution(http:Request request) returns string|error {
+    resource function post uploadSolution(http:Request request, http:Caller caller) returns error? {
+        string generatedSubmissionId = uuid:createType1AsString();
 
-        // The Redis Configuration
+        http:Response response = new;
+        response.setPayload(generatedSubmissionId);
 
-        // redis:ConnectionConfig redisConfig = {
-        //     host: "127.0.0.1:6379",
-        //     password: "",
-        //     options: {
-        //         connectionPooling: true,
-        //         isClusterConnection: false,
-        //         ssl: false,
-        //         startTls: false,
-        //         verifyPeer: false,
-        //         connectionTimeout: 500
-        //     }
-        // };
+        check caller->respond(response);
 
-        // redis:Client redisConn = check new (redisConfig);
-
-        
         mime:Entity[] bodyParts = check request.getBodyParts();
 
         data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: "", submissionId: ""};
@@ -99,7 +87,7 @@ service / on new http:Listener(9090) {
                 // subMsg.fileLocation = "./files/"  + fileName + ".zip";
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
-                subMsg.submissionId = uuid:createType1AsString();
+                subMsg.submissionId = generatedSubmissionId;
                 string submissionId = check addSubmission(subMsg, fileReadBytes);
 
                 check streamer.close();
@@ -112,7 +100,6 @@ service / on new http:Listener(9090) {
             routingKey: data_model:QUEUE_NAME
         });
     
-        return "Recieved Submission.";
     }
 
 
