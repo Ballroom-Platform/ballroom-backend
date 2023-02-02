@@ -1,12 +1,16 @@
 import ballerina/io;
 import ballerinax/rabbitmq;
-import wso2/data_model;
 import ballerina/file;
-import ballerina/mime;
-import ballerinax/redis;
+import wso2/data_model;
+import ballerinax/mysql;
+import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 
-configurable string redisHost = ?;
-configurable string redisPassword = ?;
+
+configurable string USER = ?;
+configurable string PASSWORD = ?;
+configurable string HOST = ?;
+configurable int PORT = ?;
+configurable string DATABASE = ?;
 
 
 // const SCORE_OUTPUT_FILEPATH = "";
@@ -31,7 +35,8 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     string fileNameWithExtension = submissionEvent.fileName + submissionEvent.fileExtension;
     
     // get the file
-    string|error storedLocation = check getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.redisKey);
+    string|error storedLocation = getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.submissionId);
+
 
     // unzip the submissionZip
     // string subProblemDir = "problem_" + string:substring(event.problemId, 0, <int>string:indexOf(event.problemId, ".", 0)) + "_" +
@@ -70,7 +75,7 @@ function getTestDirPath(string challengeId) returns string {
     return "./challengetests/tests/";
 }
 
-function getAndStoreFile(string fileName, string fileExtension, string redisKey) returns string|error{
+function getAndStoreFile(string fileName, string fileExtension, string submissionId) returns string|error{
     string basePath = "../storedFiles";
     string fileLocation = fileName + fileExtension;
     // should get the file from the given location and store it somewhere, then return where you stored it
@@ -81,28 +86,32 @@ function getAndStoreFile(string fileName, string fileExtension, string redisKey)
     //check file:copy("../upload-service/files/" + fileLocation,  "../storedFiles/" + fileLocation, file:REPLACE_EXISTING);
 
     // The Redis Configuration
-    redis:ConnectionConfig redisConfig = {
-            host: redisHost,
-            password: redisPassword,
-            options: {
-                connectionPooling: true,
-                isClusterConnection: false,
-                ssl: false,
-                startTls: false,
-                verifyPeer: false,
-                connectionTimeout: 50000
-            }
-        };
+    // redis:ConnectionConfig redisConfig = {
+    //         host: "127.0.0.1:6379",
+    //         password: "",
+    //         options: {
+    //             connectionPooling: true,
+    //             isClusterConnection: false,
+    //             ssl: false,
+    //             startTls: false,
+    //             verifyPeer: false,
+    //             connectionTimeout: 500
+    //         }
+    //     };
 
-    redis:Client redisConn = check new (redisConfig);
-    string? redisString = check redisConn->get(redisKey);
-    redisConn.stop();
-    if (redisString is ()) {
-        return error("Submission missing in datastore.");
-    }
-    byte[] byteArray = string:toBytes(redisString);
-    byte[] byteStream = <byte[]>(check mime:base64Decode(byteArray));
-    check io:fileWriteBytes(basePath + "/" + fileLocation, byteStream);
+    // redis:Client redisConn = check new (redisConfig);
+    // string? redisString = check redisConn->get(redisKey);
+    // redisConn.stop();
+    // if (redisString is ()) {
+    //     return error("Submission missing in datastore.");
+    // }
+    // byte[] byteArray = string:toBytes(redisString);
+    // byte[] byteStream = <byte[]>(check mime:base64Decode(byteArray));
+
+    byte[] fileFromDB = check getFileFromDB(submissionId);
+
+    check io:fileWriteBytes(basePath + "/" + fileLocation, fileFromDB);
+
 
     return basePath + "/" + fileName + "/";
 }
@@ -139,4 +148,13 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
         output.push(check line);
     }
     return output;
+}
+
+isolated function getFileFromDB(string submissionId) returns byte[]|error {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    byte[] submissionFileBlob = check dbClient->queryRow(
+        `SELECT submission_file FROM submissions WHERE submission_id = ${submissionId}`
+    );
+    check dbClient.close();
+    return submissionFileBlob;
 }

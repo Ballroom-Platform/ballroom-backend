@@ -99,7 +99,7 @@ public type SubmissionMessage record {
     string challengeId;
     string fileName;
     string fileExtension;
-    string redisKey;
+    string submissionId;
 };
 
 

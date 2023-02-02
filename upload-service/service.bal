@@ -3,8 +3,18 @@ import ballerina/mime;
 import ballerina/regex;
 import ballerina/io;
 import ballerinax/rabbitmq;
+import ballerinax/mysql;
+import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
+import ballerina/sql;
+import ballerina/uuid;
 import wso2/data_model;
-import ballerinax/redis;
+
+configurable string USER = ?;
+configurable string PASSWORD = ?;
+configurable string HOST = ?;
+configurable int PORT = ?;
+configurable string DATABASE = ?;
+
 
 
 configurable string redisHost = ?;
@@ -13,6 +23,8 @@ configurable string redisPassword = ?;
 # A service representing a network-accessible API
 # bound to port `9090`.
 service / on new http:Listener(9090) {
+
+
 
     private final rabbitmq:Client rabbitmqClient;
 
@@ -29,24 +41,25 @@ service / on new http:Listener(9090) {
 
         // The Redis Configuration
 
-        redis:ConnectionConfig redisConfig = {
-            host: redisHost,
-            password: redisPassword,
-            options: {
-                connectionPooling: true,
-                isClusterConnection: false,
-                ssl: false,
-                startTls: false,
-                verifyPeer: false,
-                connectionTimeout: 50000
-            }
-        };
+        // redis:ConnectionConfig redisConfig = {
+        //     host: "127.0.0.1:6379",
+        //     password: "",
+        //     options: {
+        //         connectionPooling: true,
+        //         isClusterConnection: false,
+        //         ssl: false,
+        //         startTls: false,
+        //         verifyPeer: false,
+        //         connectionTimeout: 500
+        //     }
+        // };
 
-        redis:Client redisConn = check new (redisConfig);
+        // redis:Client redisConn = check new (redisConfig);
+
         
         mime:Entity[] bodyParts = check request.getBodyParts();
 
-        data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: "", redisKey: ""};
+        data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: "", submissionId: ""};
 
         foreach mime:Entity item in bodyParts {
 
@@ -72,25 +85,51 @@ service / on new http:Listener(9090) {
 
                 }
 
-                string base64EncodedString = check convertByteArrayStreamToString(streamer);
+                io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/"+fileName+".zip", streamer);
 
-                string _ = check redisConn->set(fileName, base64EncodedString);
-                redisConn.stop();
+                byte[] & readonly fileReadBytes = check io:fileReadBytes("/tmp/"+fileName+".zip");
+
+
+                // string base64EncodedString = check convertByteArrayStreamToString(streamer);
+                
+
+                // string _ = check redisConn->set(fileName, base64EncodedString);
+                // redisConn.stop();
+                
                 // subMsg.fileLocation = "./files/"  + fileName + ".zip";
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
-                subMsg.redisKey = fileName;
+                subMsg.submissionId = uuid:createType1AsString();
+                string submissionId = check addSubmission(subMsg, fileReadBytes);
+
                 check streamer.close();
             }
         }
+        
 
         check self.rabbitmqClient->publishMessage({
             content: subMsg,
-            routingKey: "RequestQueue"
+            routingKey: data_model:QUEUE_NAME
         });
     
         return "Recieved Submission.";
     }
 
+
 }
 
+isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    sql:ExecutionResult result = check dbClient->execute(`
+        INSERT INTO submissions (submission_id, user_id, contest_id, challenge_id, filename, file_extension, submission_file)
+        VALUES (${submissionMessage.submissionId}, ${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
+        ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, ${submissionFile})
+    `);
+    check dbClient.close();
+    int|string? lastInsertId = result.lastInsertId;
+    if lastInsertId is string {
+        return lastInsertId;
+    } else {
+        return error("Unable to obtain last insert ID");
+    }
+}
