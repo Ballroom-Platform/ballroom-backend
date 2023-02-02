@@ -12,6 +12,7 @@ configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
 
+
 // const SCORE_OUTPUT_FILEPATH = "";
 
 // The consumer service listens to the "RequestQueue" queue.
@@ -35,6 +36,7 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     
     // get the file
     string|error storedLocation = getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.submissionId);
+
 
     // unzip the submissionZip
     // string subProblemDir = "problem_" + string:substring(event.problemId, 0, <int>string:indexOf(event.problemId, ".", 0)) + "_" +
@@ -109,6 +111,7 @@ function getAndStoreFile(string fileName, string fileExtension, string submissio
     byte[] fileFromDB = check getFileFromDB(submissionId);
 
     check io:fileWriteBytes(basePath + "/" + fileLocation, fileFromDB);
+
 
     return basePath + "/" + fileName + "/";
 }

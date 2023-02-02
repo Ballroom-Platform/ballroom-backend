@@ -16,6 +16,10 @@ configurable int PORT = ?;
 configurable string DATABASE = ?;
 
 
+
+configurable string redisHost = ?;
+configurable string redisPassword = ?;
+
 # A service representing a network-accessible API
 # bound to port `9090`.
 service / on new http:Listener(9090) {
@@ -51,6 +55,7 @@ service / on new http:Listener(9090) {
         // };
 
         // redis:Client redisConn = check new (redisConfig);
+
         
         mime:Entity[] bodyParts = check request.getBodyParts();
 
