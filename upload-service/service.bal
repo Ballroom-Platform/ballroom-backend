@@ -15,11 +15,6 @@ configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
 
-
-
-configurable string redisHost = ?;
-configurable string redisPassword = ?;
-
 # A service representing a network-accessible API
 # bound to port `9090`.
 service / on new http:Listener(9090) {
@@ -120,7 +115,7 @@ service / on new http:Listener(9090) {
 isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error?{    
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult result = check dbClient->execute(`
-        INSERT INTO submissions (submission_id, user_id, contest_id, challenge_id, filename, file_extension, submission_file)
+        INSERT INTO submission (submission_id, user_id, contest_id, challenge_id, filename, file_extension, submission_file)
         VALUES (${submissionMessage.submissionId}, ${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
         ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, ${submissionFile})
     `);

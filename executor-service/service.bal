@@ -38,6 +38,8 @@ service rabbitmq:Service on channelListener {
         // need to evaluate the score
         data_model:ScoredSubmissionMessage scoredSubMsg = check handleEvent(submissionEvent);
 
+        io:println(scoredSubMsg);
+
         check self.rabbitmqClient->publishMessage({
             content: scoredSubMsg,
             routingKey: data_model:EXEC_TO_SCORE_QUEUE_NAME
@@ -211,7 +213,7 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
 isolated function getFileFromDB(string submissionId) returns byte[]|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     byte[] submissionFileBlob = check dbClient->queryRow(
-        `SELECT submission_file FROM submissions WHERE submission_id = ${submissionId}`
+        `SELECT submission_file FROM submission WHERE submission_id = ${submissionId}`
     );
     check dbClient.close();
     return submissionFileBlob;
