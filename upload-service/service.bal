@@ -97,7 +97,6 @@ service / on new http:Listener(9090) {
                 subMsg.fileExtension = ".zip";
                 subMsg.submissionId = uuid:createType1AsString();
                 check addSubmission(subMsg, fileReadBytes);
-
                 check streamer.close();
             }
         }
