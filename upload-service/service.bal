@@ -15,11 +15,6 @@ configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
 
-
-
-configurable string redisHost = ?;
-configurable string redisPassword = ?;
-
 # A service representing a network-accessible API
 # bound to port `9090`.
 service / on new http:Listener(9090) {
@@ -38,14 +33,15 @@ service / on new http:Listener(9090) {
     # + request - the input solution file as a multipart request with userId, challengeId & the solution as a zip file
     # + return - response message from server
     resource function post uploadSolution(http:Request request, http:Caller caller) returns error? {
+        io:println("ENT");
         string generatedSubmissionId = uuid:createType1AsString();
 
         http:Response response = new;
         response.setPayload(generatedSubmissionId);
+        mime:Entity[] bodyParts = check request.getBodyParts();
 
         check caller->respond(response);
 
-        mime:Entity[] bodyParts = check request.getBodyParts();
 
         data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: "", submissionId: ""};
 
@@ -88,8 +84,9 @@ service / on new http:Listener(9090) {
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
                 subMsg.submissionId = generatedSubmissionId;
+                io:println("BEFORE ADD");
                 string? _ = check addSubmission(subMsg, fileReadBytes);
-
+                io:println("after ADD");
                 check streamer.close();
             }
         }
