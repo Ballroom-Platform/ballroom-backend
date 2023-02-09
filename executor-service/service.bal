@@ -83,7 +83,8 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
 
     // output to a file (for now)
     string[] content = [submissionEvent.userId + "|" + submissionEvent.challengeId + "|" + submissionEvent.contestId + "|" + fileNameWithExtension + " ----> " + score.toString()];
-    io:Error? fileWriteLines = io:fileWriteLines("./scores/scores.txt", content);
+
+    return scoredSubMsg;
 
     return scoredSubMsg;
 
