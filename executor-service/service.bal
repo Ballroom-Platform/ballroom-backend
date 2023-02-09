@@ -86,6 +86,8 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
 
     return scoredSubMsg;
 
+    return scoredSubMsg;
+
 }
 
 function calculateScore(string[] executeCommandResult) returns float|error {
