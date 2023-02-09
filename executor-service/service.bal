@@ -4,6 +4,7 @@ import ballerina/file;
 import wso2/data_model;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
+import ballerina/regex;
 
 
 configurable string USER = ?;
@@ -22,15 +23,31 @@ listener rabbitmq:Listener channelListener= new(rabbitmq:DEFAULT_HOST, rabbitmq:
     queueName: data_model:QUEUE_NAME
 }
 service rabbitmq:Service on channelListener {
+
+    private final rabbitmq:Client rabbitmqClient;
+
+    function init() returns error? {
+        // Initiate the RabbitMQ client at the start of the service. This will be used
+        // throughout the lifetime of the service.
+        self.rabbitmqClient = check new (rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
+    }
+
     remote function onMessage(data_model:SubmissionMessage submissionEvent) returns error? {
 
         io:println(submissionEvent);
         // need to evaluate the score
-        check handleEvent(submissionEvent);
+        data_model:ScoredSubmissionMessage scoredSubMsg = check handleEvent(submissionEvent);
+
+        io:println(scoredSubMsg);
+
+        check self.rabbitmqClient->publishMessage({
+            content: scoredSubMsg,
+            routingKey: data_model:EXEC_TO_SCORE_QUEUE_NAME
+        });
     }
 }
 
-function handleEvent(data_model:SubmissionMessage submissionEvent) returns error? {
+function handleEvent(data_model:SubmissionMessage submissionEvent) returns error|data_model:ScoredSubmissionMessage {
     string basePath = "../storedFiles/";
     string fileNameWithExtension = submissionEvent.fileName + submissionEvent.fileExtension;
     
@@ -58,16 +75,59 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     string[] executeCommandResult = check executeCommand(testCommand);
 
     // calculate a score from the output
-    float score = calculateScore(executeCommandResult);
+    float score = check calculateScore(executeCommandResult);
+
+    data_model:ScoredSubmissionMessage scoredSubMsg = {subMsg: submissionEvent, score: score};
+
+    
 
     // output to a file (for now)
     string[] content = [submissionEvent.userId + "|" + submissionEvent.challengeId + "|" + submissionEvent.contestId + "|" + fileNameWithExtension + " ----> " + score.toString()];
     io:Error? fileWriteLines = io:fileWriteLines("./scores/scores.txt", content);
 
+    return scoredSubMsg;
+
 }
 
-function calculateScore(string[] executeCommandResult) returns float {
-    return 0.0;
+function calculateScore(string[] executeCommandResult) returns float|error {
+
+    string balCommandOutput = "";
+    float score = 0.0;
+    foreach string line in executeCommandResult {
+        balCommandOutput += "\n" + line;
+    }
+
+    // calculate scores
+    int passingTests = 0;
+    int totalTests = 0;
+    string[] reversedConsoleContent = executeCommandResult.reverse();
+
+    boolean processPassing = false;
+    boolean processFailing = false;
+    boolean processSkipped = false;
+    foreach string line in reversedConsoleContent {
+        if (processPassing && processFailing && processSkipped) {
+            break;
+        } else {
+            if (string:includes(line, "passing") && !processPassing) {
+            passingTests = check int:fromString(regex:split(string:trim(line), " ")[0]);
+            totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
+            processPassing = true;
+        }
+        if (string:includes(line, "failing") && !processFailing) {
+            totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
+            processFailing = true;
+        }
+        if (string:includes(line, "skipped") && !processSkipped) {
+            totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
+            processSkipped = true;
+        }
+        }
+    }
+    if totalTests > 0 {
+        score = (10.0 * <float>passingTests) / <float>totalTests;
+    }
+    return score;
 }
 
 function getTestDirPath(string challengeId) returns string {
@@ -153,7 +213,7 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
 isolated function getFileFromDB(string submissionId) returns byte[]|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     byte[] submissionFileBlob = check dbClient->queryRow(
-        `SELECT submission_file FROM submissions WHERE submission_id = ${submissionId}`
+        `SELECT submission_file FROM submission WHERE submission_id = ${submissionId}`
     );
     check dbClient.close();
     return submissionFileBlob;

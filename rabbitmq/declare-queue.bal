@@ -7,4 +7,6 @@ public function main() returns error? {
 
     // Declares the queue, OrderQueue.
     check newClient->queueDeclare(data_model:QUEUE_NAME);
+    check newClient->queueDeclare(data_model:EXEC_TO_SCORE_QUEUE_NAME);
+
 }
