@@ -10,8 +10,20 @@ configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
 
+
+
 # A service representing a network-accessible API
 # bound to port `9090`.
+# // The service-level CORS config applies globally to each `resource`.
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+        allowCredentials: false,
+        allowHeaders: ["CORELATION_ID"],
+        exposeHeaders: ["X-CUSTOM-HEADER"],
+        maxAge: 84900
+    }
+}
 service /score on new http:Listener(9092) {
 
     # A resource for generating greetings
@@ -24,7 +36,7 @@ service /score on new http:Listener(9092) {
             return respondDatabaseError();
         }
         string | sql:Error result = dbClient->queryRow(`
-            SELECT submission_score FROM submissions WHERE submission_id = ${submissionId};
+            SELECT submission_score FROM submission WHERE submission_id = ${submissionId};
         `);
 
         sql:Error? close = dbClient.close();
