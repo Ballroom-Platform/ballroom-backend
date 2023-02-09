@@ -32,27 +32,16 @@ service / on new http:Listener(9090) {
     # A resource for uploading solutions to challenges
     # + request - the input solution file as a multipart request with userId, challengeId & the solution as a zip file
     # + return - response message from server
-    resource function post uploadSolution(http:Request request) returns string|error {
+    resource function post uploadSolution(http:Request request, http:Caller caller) returns error? {
+        io:println("ENT");
+        string generatedSubmissionId = uuid:createType1AsString();
 
-        // The Redis Configuration
-
-        // redis:ConnectionConfig redisConfig = {
-        //     host: "127.0.0.1:6379",
-        //     password: "",
-        //     options: {
-        //         connectionPooling: true,
-        //         isClusterConnection: false,
-        //         ssl: false,
-        //         startTls: false,
-        //         verifyPeer: false,
-        //         connectionTimeout: 500
-        //     }
-        // };
-
-        // redis:Client redisConn = check new (redisConfig);
-
-        
+        http:Response response = new;
+        response.setPayload(generatedSubmissionId);
         mime:Entity[] bodyParts = check request.getBodyParts();
+
+        check caller->respond(response);
+
 
         data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: "", submissionId: ""};
 
@@ -94,8 +83,10 @@ service / on new http:Listener(9090) {
                 // subMsg.fileLocation = "./files/"  + fileName + ".zip";
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
-                subMsg.submissionId = uuid:createType1AsString();
+                subMsg.submissionId = generatedSubmissionId;
+                io:println("BEFORE ADD");
                 string? _ = check addSubmission(subMsg, fileReadBytes);
+                io:println("after ADD");
                 check streamer.close();
             }
         }
@@ -106,13 +97,13 @@ service / on new http:Listener(9090) {
             routingKey: data_model:QUEUE_NAME
         });
     
-        return "Recieved Submission.";
     }
 
 
 }
 
-isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error?{    
+
+isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns string|error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult result = check dbClient->execute(`
         INSERT INTO submission (submission_id, user_id, contest_id, challenge_id, filename, file_extension, submission_file)
@@ -124,6 +115,6 @@ isolated function addSubmission(data_model:SubmissionMessage submissionMessage, 
     if lastInsertId is string {
         return lastInsertId;
     } else {
-        return;
+        return ;
     }
 }
