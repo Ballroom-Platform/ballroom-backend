@@ -79,13 +79,6 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
 
     data_model:ScoredSubmissionMessage scoredSubMsg = {subMsg: submissionEvent, score: score};
 
-    
-
-    // output to a file (for now)
-    string[] content = [submissionEvent.userId + "|" + submissionEvent.challengeId + "|" + submissionEvent.contestId + "|" + fileNameWithExtension + " ----> " + score.toString()];
-
-    return scoredSubMsg;
-
     return scoredSubMsg;
 
 }

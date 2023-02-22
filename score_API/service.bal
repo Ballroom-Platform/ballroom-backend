@@ -30,6 +30,13 @@ service /score on new http:Listener(9092) {
     #
     # + submissionId - Parameter Description
     # + return - string name with hello message or error
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER"]
+        }
+    }
     resource function get submissionScore(string submissionId) returns json {
         final mysql:Client | sql:Error dbClient = new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
         if(dbClient is sql:Error){
