@@ -1,0 +1,14 @@
+[package]
+org = "wso2"
+name = "executor_service"
+version = "0.1.0"
+distribution = "2201.2.3"
+
+[build-options]
+observabilityIncluded = true
+
+[[dependency]]
+org = "wso2"
+name = "data_model"
+version = "0.1.0"
+repository="local"
