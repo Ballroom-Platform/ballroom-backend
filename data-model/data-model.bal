@@ -1,4 +1,5 @@
 import ballerina/time;
+import ballerina/sql;
 
 public type User record {|
     readonly string user_id;
@@ -15,17 +16,17 @@ public type Organization record {|
     string name;
     string category;
     User[] members;       //MANY TO MANY RELATIONSHIP WITH USER
-    Contest[] contests;     //ONE TO MANY RELATIONSHIP WITH CONTEST
+    Contest_Ideal[] contests;     //ONE TO MANY RELATIONSHIP WITH CONTEST
     Challenge[]  poolOfChallenges;        //ONE TO MANY RELATIONSHIP WITH CHALLENGE
 |};
 
 public type Moderator record {|
     readonly moderator_id;
     User user;
-    Contest contest;        //MANY TO ONE RELATIONSHIP WITH CONTEST
+    Contest_Ideal contest;        //MANY TO ONE RELATIONSHIP WITH CONTEST
 |};
 
-public type Contest record {|
+public type Contest_Ideal record {|
     readonly string contest_id;
     Organization organization;      //MANY TO ONE RELATIONSHIP WITH ORGANIZATION
     string name;
@@ -38,7 +39,7 @@ public type Contest record {|
 
 public type Contestant record {|
     readonly User user;
-    readonly Contest contest;       //MANY TO ONE RELATIONSHIP WITH CONTEST
+    readonly Contest_Ideal contest;       //MANY TO ONE RELATIONSHIP WITH CONTEST
     decimal total_score;
 |};
 
@@ -60,7 +61,7 @@ public type Challenge record {|
     Environment environment;        //MANY TO ONE RELATIONSHIP WITH ENVIRONMENT
     TestCase[] testcases;       //ONE TO MANY RELATIONSHIP WITH TESTCASE
     Submission[] submissions;       //ONE TO MANY RELATIONSHIP WITH SUBMISSION
-    Contest[] contests;     //MANY TO MANY RELATIONSHIP WITH CONTEST
+    Contest_Ideal[] contests;     //MANY TO MANY RELATIONSHIP WITH CONTEST
 |};
 
 public type Submission record {|
@@ -110,3 +111,13 @@ public type ScoredSubmissionMessage record {
 };
 
 
+public type Contest record {
+    @sql:Column {name: "contest_id"}
+    int contestId;
+    string name;
+    @sql:Column {name: "start_time"}
+    time:Civil startTime;
+    @sql:Column {name: "end_time"}
+    time:Civil endTime;
+    string moderator;
+};
