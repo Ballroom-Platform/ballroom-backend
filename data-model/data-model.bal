@@ -1,14 +1,22 @@
 import ballerina/time;
 import ballerina/sql;
 
-public type User record {|
+public type User_idel record {|
     readonly string user_id;
     string username;
-    string name;
+    string fullname;
+    string role;
     Organization[] organizations;   //MANY TO MANY RELATIONSHIP WITH ORGANIZATION
     Contestant[] contestants;       //ONE TO MANY RELATIONSHIP WITH CONTESTANT
     Moderator[] moderators;         //ONE TO MANY RELATIONSHIP WITH MODERATOR
-    Challenge[]  authoredChallenges;        //ONE TO MANY RELATIONSHIP WITH CHALLENGE
+    Challenge_Ideal[]  authoredChallenges;        //ONE TO MANY RELATIONSHIP WITH CHALLENGE
+|};
+
+public type User record {|
+    readonly string user_id;
+    string username;
+    string fullname;
+    string role;
 |};
 
 public type Organization record {|
@@ -32,7 +40,7 @@ public type Contest_Ideal record {|
     string name;
     time:Date start_time;
     time:Date end_time;
-    Challenge[] challenges;     //MANY TO MANY RELATIONSHIP WITH ORGANIZATION
+    Challenge_Ideal[] challenges;     //MANY TO MANY RELATIONSHIP WITH ORGANIZATION
     Moderator[] moderators;     //ONE TO MANY RELATIONSHIP WITH MODERATOR
     Contestant[] contestants;     //ONE TO MANY RELATIONSHIP WITH MODERATOR
 |};
@@ -50,7 +58,7 @@ public enum Challenge_Type {
 }
 
 
-public type Challenge record {|
+public type Challenge_Ideal record {|
     readonly string challenge_id;
     string name;
     Challenge_Type type_of_challenge;
@@ -69,13 +77,13 @@ public type Submission record {|
     string input;
     decimal score;
     time:Date submitted_time;
-    Challenge challenge;        //MANY TO ONE RELATIONSHIP WITH SUBMISSION           
+    Challenge_Ideal challenge;        //MANY TO ONE RELATIONSHIP WITH SUBMISSION           
     Contestant contestant;      //MANY TO ONE RELATIONSHIP WITH CONTESTANT
 |};
 
 public type TestCase record {|
     readonly string testcase_id;
-    Challenge challenge;        //MANY TO ONE RELATIONSHIP WITH CHALLENGE
+    Challenge_Ideal challenge;        //MANY TO ONE RELATIONSHIP WITH CHALLENGE
     string input;
     string expected_output;
     decimal weight;
@@ -86,7 +94,7 @@ public type Environment record {|
     string name;
     string description;
     string stored_url;
-    Challenge[] challenges;     //ONE TO MANY RELATIONSHIP WITH CHALLENGE (Same environment maybe used for multiple challenges for common configurations)
+    Challenge_Ideal[] challenges;     //ONE TO MANY RELATIONSHIP WITH CHALLENGE (Same environment maybe used for multiple challenges for common configurations)
 |};
 
 
@@ -108,6 +116,22 @@ public type SubmissionMessage record {
 public type ScoredSubmissionMessage record {
     SubmissionMessage subMsg;
     float score;
+};
+
+// public enum ChallengeDifficulty {
+//     EASY = "EASY",
+//     MEDIUM = "MEDIUM",
+//     HARD = "HARD"
+// }
+public type Challenge record{
+    @sql:Column {name: "challenge_id"}
+    int challengeId;
+    string title;
+    string description;
+    // Not sure about the type here, byte[]?
+    // ChallengeDifficulty difficulty; 
+    string difficulty;
+    byte[] testCase;
 };
 
 
