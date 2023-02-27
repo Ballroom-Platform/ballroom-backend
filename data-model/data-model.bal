@@ -1,13 +1,21 @@
 import ballerina/time;
 
-public type User record {|
+public type User_idel record {|
     readonly string user_id;
     string username;
-    string name;
+    string fullname;
+    string role;
     Organization[] organizations;   //MANY TO MANY RELATIONSHIP WITH ORGANIZATION
     Contestant[] contestants;       //ONE TO MANY RELATIONSHIP WITH CONTESTANT
     Moderator[] moderators;         //ONE TO MANY RELATIONSHIP WITH MODERATOR
     Challenge[]  authoredChallenges;        //ONE TO MANY RELATIONSHIP WITH CHALLENGE
+|};
+
+public type User record {|
+    readonly string user_id;
+    string username;
+    string fullname;
+    string role;
 |};
 
 public type Organization record {|

@@ -37,7 +37,7 @@ service /score on new http:Listener(9092) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER"]
         }
     }
-    resource function get submissionScore(string submissionId) returns json {
+    resource function get submissionScore/[string submissionId]() returns json {
         final mysql:Client | sql:Error dbClient = new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
         if(dbClient is sql:Error){
             return respondDatabaseError();
