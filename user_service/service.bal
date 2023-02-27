@@ -12,7 +12,7 @@ configurable string DATABASE = ?;
 
 # A service representing a network-accessible API
 # bound to port `9090`.
-service /userService on new http:Listener(9090) {
+service /userService on new http:Listener(9095) {
 
 
     resource function get user/[string userID]() returns json|error {

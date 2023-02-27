@@ -22,7 +22,7 @@ service class RequestInterceptor {
             return http:UNAUTHORIZED;
         }
 
-        http:Forbidden? authz = handler.authorize(<jwt:Payload>authn, rolesMap[request.rawPath] ?: []);
+        http:Forbidden? authz = handler.authorize(<jwt:Payload>authn, rolesMap[request.method + request.rawPath] ?: rolesList);
         if authz is http:Forbidden {
             return http:FORBIDDEN;
         }

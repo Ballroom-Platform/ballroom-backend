@@ -1,26 +1,33 @@
 import ballerina/jwt;
 import ballerina/http;
 
-
-configurable string tokenUsername = ?;
 configurable string tokenIssuer = ?;
 configurable string tokenAudience = ?;
 
 
 # A service representing a network-accessible API
 # bound to port `9090`.
-service /sts on new http:Listener(9091) {
+service /sts on new http:Listener(9093) {
 
 
-    resource function get accessToken(http:Request request, http:Caller caller) returns http:ListenerError? {
+    resource function get accessToken(http:Request request, http:Caller caller) returns http:ListenerError?|error {
 
+
+        http:Response response = new;
 
         //Verify IDP token here
         
-        //Get user info from DB here
+        http:Client userClient = check new ("http://localhost:9095/userService");
+        json | error responseData = userClient->get("/user/001");
+        if (responseData is error){
+            response.statusCode = 500;
+            http:ListenerError? result = caller->respond(response);
+            return result;
+        }
+        json userData = check responseData.data;
 
         jwt:IssuerConfig issueConfig = {
-            username: tokenUsername,
+            username: "username",
             issuer: tokenIssuer,
             audience: tokenAudience,
             expTime: 3600,
@@ -29,8 +36,8 @@ service /sts on new http:Listener(9091) {
                     keyFile: "./certificates/server.key"
                 }
             },customClaims: {
-                user: "",
-                scp: ["contestant"]
+                user: userData,
+                scp: [check userData.role]
             }
         };
 
@@ -39,14 +46,13 @@ service /sts on new http:Listener(9091) {
         issueConfig.expTime = 3600*24*30;
 
         string|jwt:Error refreshToken = jwt:issue(issueConfig);
-
-        http:Response response = new;
         
         if accessToken is jwt:Error || refreshToken is jwt:Error{
             response.statusCode = 500;
             http:ListenerError? result = caller->respond(response);
             return result;
         }
+
 
         http:CookieOptions cookieOptions = {
             maxAge: 300,
