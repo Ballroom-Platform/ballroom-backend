@@ -3,7 +3,6 @@ import ballerinax/mysql;
 import ballerina/sql;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 import wso2/data_model;
-import ballerina/io;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
