@@ -298,7 +298,7 @@ modules = [
 
 [[package]]
 org = "ravin"
-name = "sts_service"
+name = "bff"
 version = "0.1.0"
 dependencies = [
 	{org = "ballerina", name = "http"},
@@ -308,7 +308,7 @@ dependencies = [
 	{org = "ballerinai", name = "observe"}
 ]
 modules = [
-	{org = "ravin", packageName = "sts_service", moduleName = "sts_service"}
+	{org = "ravin", packageName = "bff", moduleName = "bff"}
 ]
 
 

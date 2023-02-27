@@ -1,7 +1,7 @@
 import ballerina/jwt;
 import ballerina/http;
 
-configurable string tokenSecret = ?;
+
 configurable string tokenUsername = ?;
 configurable string tokenIssuer = ?;
 configurable string tokenAudience = ?;
@@ -9,7 +9,7 @@ configurable string tokenAudience = ?;
 
 # A service representing a network-accessible API
 # bound to port `9090`.
-service /sts on new http:Listener(9090) {
+service /sts on new http:Listener(9091) {
 
 
     resource function get accessToken(http:Request request, http:Caller caller) returns http:ListenerError? {
@@ -19,24 +19,26 @@ service /sts on new http:Listener(9090) {
         
         //Get user info from DB here
 
-        jwt:IssuerConfig issuerConfig = {
+        jwt:IssuerConfig issueConfig = {
             username: tokenUsername,
             issuer: tokenIssuer,
             audience: tokenAudience,
             expTime: 3600,
             signatureConfig: {
                 config: {
-                    keyFile: "./certificates/private_key.pem",
-                    keyPassword: tokenSecret
+                    keyFile: "./certificates/server.key"
                 }
             },customClaims: {
                 user: "",
-                roles: ["Contestant"]
+                scp: ["contestant"]
             }
         };
 
-        string|jwt:Error accessToken = jwt:issue(issuerConfig);
-        string|jwt:Error refreshToken = jwt:issue(issuerConfig);
+        string|jwt:Error accessToken = jwt:issue(issueConfig);
+
+        issueConfig.expTime = 3600*24*30;
+
+        string|jwt:Error refreshToken = jwt:issue(issueConfig);
 
         http:Response response = new;
         
