@@ -114,9 +114,9 @@ service / on new http:Listener(9090) {
 isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult _ = check dbClient->execute(`
-        INSERT INTO submission (submission_id, user_id, contest_id, challenge_id, filename, file_extension, submission_file)
+        INSERT INTO Submissions (submissionId, userId, contestId, challengeId, fileName, fileExtension, submissionFile, submittedTime)
         VALUES (${submissionMessage.submissionId}, ${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
-        ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, ${submissionFile})
+        ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, ${submissionFile}, CURRENT_TIMESTAMP())
     `);
     check dbClient.close();
 }
