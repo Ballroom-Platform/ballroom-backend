@@ -2,7 +2,9 @@ import ballerina/jwt;
 import ballerina/http;
 import ballerinax/mysql;
 import ballerina/sql;
+import ballerina/regex;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
+import ballerina/io;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -19,57 +21,83 @@ configurable string tokenAudience = ?;
 service /sts on new http:Listener(9093) {
 
 
-    resource function get accessToken(http:Request request, http:Caller caller) returns http:ListenerError?|error {
+    resource function get accessToken(http:Request request, http:Caller caller) returns ()|error {
 
 
         http:Response response = new;
 
-        //Verify IDP token here
+        do{
+            // json | error idpResult = verifyIDPToken(request, response, caller);
 
-        string userID = "001";
+            // if idpResult is error{
+            //     check idpResult;
+            //     return;
+            // }
 
-        json? | error userData = getUserData(response, caller, userID);
+            // if check idpResult.active == false {
+            //     check respondError(response, caller, 403);
+            //     return;
+            // }
 
-        if userData is error || userData is (){
-            return respondError(response, caller, 500);
-        }
+            // string userID = check idpResult.sub;
+            string userID = "baf7303c-f34a-4c7e-b11d-4ed8186ad29c";
 
-        string|jwt:Error | error accessToken = generateToken(userData, 3600);
+            json? | error userData = getUserData(response, caller, userID);
 
-        string|jwt:Error | error refreshToken = generateToken(userData, 3600*24*30);
-
-        if accessToken is jwt:Error || accessToken is error || refreshToken is jwt:Error || refreshToken is error{
-            return respondError(response, caller, 500);
-        }
-
-        error? queryResult = storeRefreshTokenUser(refreshToken, userID);
-
-        if queryResult is error{
-            return respondError(response, caller, 500);
-        }
-
-        http:CookieOptions cookieOptions = {
-            maxAge: 300,
-            httpOnly: true,
-            secure: true
-        };
-
-        http:Cookie refreshTokenCookie = new("refreshToken", refreshToken, cookieOptions);
-
-        response.addCookie(refreshTokenCookie);
-
-        response.setPayload({
-            data:{
-                accessToken
+            if userData is error || userData is (){
+                check respondError(response, caller, 500);
+                return;
             }
-        });
 
-        response.statusCode = 200;
-        http:ListenerError? result = caller->respond(response);
-        return result;
+            string|jwt:Error | error accessToken = generateToken(userData, 3600);
+
+            string|jwt:Error | error refreshToken = generateToken(userData, 3600*24*30);
+
+            if accessToken is jwt:Error || accessToken is error || refreshToken is jwt:Error || refreshToken is error{
+                check respondError(response, caller, 500);
+                return;
+            }
+
+            error? queryResult = storeRefreshTokenUser(refreshToken, userID);
+
+            if queryResult is error{
+                check respondError(response, caller, 500);
+                return;
+            }
+
+            http:CookieOptions cookieOptions = {
+                maxAge: 300,
+                httpOnly: true,
+                secure: true
+            };
+
+            http:Cookie refreshTokenCookie = new("refreshToken", refreshToken, cookieOptions);
+
+            response.addCookie(refreshTokenCookie);
+
+            response.setPayload({
+                data:{
+                    accessToken
+                }
+            });
+
+            response.statusCode = 200;
+            check caller->respond(response);
+        }
+        on fail {
+            response.statusCode = 500;
+            check caller->respond(response);
+        }
+        return;
+        
     }
 
-    resource function get refreshToken(http:Request request, http:Caller caller) returns http:ListenerError?|error {
+    resource function post test(http:Request request) returns json {
+        io:println(request.getJsonPayload());
+        return {};
+    }
+
+    resource function get refreshToken(http:Request request, http:Caller caller) returns ()|error{
         http:Response response = new;
         http:Cookie[] cookies = request.getCookies();
         string? refreshToken = ();
@@ -81,34 +109,36 @@ service /sts on new http:Listener(9093) {
         }
 
         if refreshToken is () {
-            return respondError(response, caller, 401);
+            check respondError(response, caller, 401);
+            return;
         }
 
         string? | error storedUserID = getRefreshTokenUser(refreshToken);
 
         if(storedUserID is error){
-            return respondError(response, caller, 500);
+            check respondError(response, caller, 500);
+            return;
         }
 
         if(storedUserID is ()){
-            return respondError(response, caller, 401);
+            check respondError(response, caller, 401);
+            return;
         }
 
-        jwt:Payload | http:ListenerError? payload = validateToken(refreshToken, storedUserID, response, caller);
-        if payload is http:ListenerError {
-            return payload;
-        }
+        jwt:Payload? _ = check validateToken(refreshToken, storedUserID, response, caller);
 
-        json? | error userData = getUserData(response, caller, storedUserID);
+        json? userData = check getUserData(response, caller, storedUserID);
 
-        if userData is error || userData is (){
-            return respondError(response, caller, 500);
+        if userData is (){
+            check respondError(response, caller, 500);
+            return;
         }
 
         string|jwt:Error | error accessToken = generateToken(userData, 3600);
 
         if accessToken is jwt:Error || accessToken is error{
-            return respondError(response, caller, 500);
+            check respondError(response, caller, 500);
+            return;
         }
 
         response.setPayload({
@@ -117,9 +147,19 @@ service /sts on new http:Listener(9093) {
             }
         });
         response.statusCode = 200;
-        http:ListenerError? result = caller->respond(response);
-        return result;
+        check caller->respond(response);
+        return;
     }
+}
+
+public function verifyIDPToken(http:Request request, http:Response response, http:Caller caller) returns json | error {
+    string header = check request.getHeader("Authorization");
+    string idpToken = (regex:split(header, " "))[1];
+    http:Client idpClient = check new("https://api.asgardeo.io/t/ravin/oauth2");
+    json | error res = idpClient->post("/introspect", headers = ({"Content-Type":"application/x-www-form-urlencoded","Connection": "keep-alive", "Authorization":"Basic dEJkVG42NjVtV2F5d2d6bTdkc1MyYUZ4MzVvYTpBS3V3enBORlVCbHBwdjhyazduSFFVQVlNWTBh"}),message = "token="+idpToken, targetType = json);
+    io:println(res);
+    return {};
+    
 }
 
 
