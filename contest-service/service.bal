@@ -71,6 +71,15 @@ service /contestService on new http:Listener(9090) {
         return contestId;
     }
 
+    resource function post contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
+        string|int|error? result =  addChallengeToContest(contestId, challengeId);
+        if result is error {
+            return error("ERROR OCCURED, COULD NOT INSERT CHALLENGE TO CONTEST");
+        }
+        return result;
+    }
+
+
     resource function put contest/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|error {
         error? updatedContest = updateContest(contestId, toBeUpdatedContest);
         if updatedContest is error {
@@ -89,12 +98,40 @@ service /contestService on new http:Listener(9090) {
             if contest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID OR CONTEST IS ONGOING OR ENDED.") {
                 return contest;
             }
-            // return error("DATABASE ERROR");
-            return contest;
+            return error("DATABASE ERROR");
+            // return contest;
         }
 
         return "DELETE SUCCESSFULL";
     }
+
+    resource function delete contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
+        string|int|error? result =  deleteChallengeFromContest(contestId, challengeId);
+        if result is error {
+            return result;
+            // return error("ERROR OCCURED, COULD NOT DELETE CHALLENGE FROM CONTEST");
+        }
+        return "DELETE SUCCESSFULL";
+    }
+}
+
+function addChallengeToContest(string contestId, string challengeId) returns string|int|error? {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+
+    sql:ExecutionResult execRes = check dbClient->execute(`
+        INSERT INTO Contest_Challenge (contest_id, challenge_id) VALUES (${contestId}, ${challengeId});
+    `);
+    check dbClient.close();
+    return execRes.lastInsertId;
+}
+
+function deleteChallengeFromContest(string contestId, string challengeId) returns string|int|error? {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    sql:ExecutionResult execRes = check dbClient->execute(`
+        DELETE FROM Contest_Challenge WHERE contest_id = ${contestId} AND challenge_id = ${challengeId};
+    `);
+    check dbClient.close();
+    return execRes.lastInsertId;
 }
 
 function deleteContest(string contestId) returns error? {
