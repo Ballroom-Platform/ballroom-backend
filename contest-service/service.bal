@@ -4,6 +4,7 @@ import ballerinax/mysql;
 import ballerina/sql;
 import ballerinax/mysql.driver as _;
 import ballerina/time;
+import ballerina/uuid;
 // import ballerina/io;
 // import ballerina/io;
 // import ballerina/mime;
@@ -34,7 +35,7 @@ type ChallengeId record {
 # bound to port `9090`.
 service /contestService on new http:Listener(9090) {
 
-    resource function get contest/[int contestId]() returns data_model:Contest|error? {
+    resource function get contest/[string contestId]() returns data_model:Contest|error? {
         
         data_model:Contest contest = check getContest(contestId);
         return contest;
@@ -70,7 +71,7 @@ service /contestService on new http:Listener(9090) {
         return contestId;
     }
 
-    resource function put contest/[int contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|error {
+    resource function put contest/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|error {
         error? updatedContest = updateContest(contestId, toBeUpdatedContest);
         if updatedContest is error {
             if updatedContest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID.") {
@@ -82,7 +83,7 @@ service /contestService on new http:Listener(9090) {
         return toBeUpdatedContest;
     }
 
-    resource function delete contest/[int contestId]() returns string|error {
+    resource function delete contest/[string contestId]() returns string|error {
         error? contest = deleteContest(contestId);
         if contest is error {
             if contest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID OR CONTEST IS ONGOING OR ENDED.") {
@@ -96,7 +97,7 @@ service /contestService on new http:Listener(9090) {
     }
 }
 
-function deleteContest(int contestId) returns error? {
+function deleteContest(string contestId) returns error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
         DELETE FROM Contests WHERE contest_id = ${contestId} AND CURRENT_TIMESTAMP() <= start_time;
@@ -119,7 +120,7 @@ function getContestChallenges(string contestId) returns error|int[]|sql:Error? {
     return listOfChallengeIds;
 }
 
-function updateContest(int contestId, UpdatedContest toBeUpdatedContest) returns error?{
+function updateContest(string contestId, UpdatedContest toBeUpdatedContest) returns error?{
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
         UPDATE Contests SET name = ${toBeUpdatedContest.name}, start_time = ${toBeUpdatedContest.startTime}, end_time = ${toBeUpdatedContest.endTime}, moderator = ${toBeUpdatedContest.moderator} WHERE contest_id = ${contestId};
@@ -153,14 +154,16 @@ function getContestsWithStatus(string status) returns data_model:Contest[]|sql:E
 
 function addContest(data_model:Contest newContest) returns string|int?|error{
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    string generatedContestId = "contest-" + uuid:createType1AsString();
+
     sql:ExecutionResult execRes = check dbClient->execute(`
-        INSERT INTO Contests (name, start_time, end_time, moderator) VALUES (${newContest.name}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
+        INSERT INTO Contests (contest_id, name, start_time, end_time, moderator) VALUES (${generatedContestId},${newContest.name}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
     `);
     check dbClient.close();
     return execRes.lastInsertId;
 }
 
-function getContest(int contestId) returns data_model:Contest|sql:Error|error {
+function getContest(string contestId) returns data_model:Contest|sql:Error|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     data_model:Contest|sql:Error result = dbClient->queryRow(`SELECT * FROM Contests WHERE contest_id = ${contestId}`);
     check dbClient.close();
