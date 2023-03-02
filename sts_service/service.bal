@@ -18,8 +18,16 @@ configurable string tokenAudience = ?;
 
 # A service representing a network-accessible API
 # bound to port `9090`.
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["https://localhost:3000"],
+        allowCredentials: false,
+        allowHeaders: ["CORELATION_ID"],
+        exposeHeaders: ["X-CUSTOM-HEADER"],
+        maxAge: 84900
+    }
+}
 service /sts on new http:Listener(9093) {
-
 
     resource function get accessToken(http:Request request, http:Caller caller) returns ()|error {
 
@@ -42,28 +50,14 @@ service /sts on new http:Listener(9093) {
             // string userID = check idpResult.sub;
             string userID = "baf7303c-f34a-4c7e-b11d-4ed8186ad29c";
 
-            json? | error userData = getUserData(response, caller, userID);
+            json? userData = check getUserData(response, caller, userID);
 
-            if userData is error || userData is (){
-                check respondError(response, caller, 500);
-                return;
-            }
+            string accessToken = check generateToken(userData, 3600);
 
-            string|jwt:Error | error accessToken = generateToken(userData, 3600);
+            string refreshToken = check generateToken(userData, 3600*24*30);
 
-            string|jwt:Error | error refreshToken = generateToken(userData, 3600*24*30);
+            check storeRefreshTokenUser(refreshToken, userID);
 
-            if accessToken is jwt:Error || accessToken is error || refreshToken is jwt:Error || refreshToken is error{
-                check respondError(response, caller, 500);
-                return;
-            }
-
-            error? queryResult = storeRefreshTokenUser(refreshToken, userID);
-
-            if queryResult is error{
-                check respondError(response, caller, 500);
-                return;
-            }
 
             http:CookieOptions cookieOptions = {
                 maxAge: 300,
@@ -92,62 +86,42 @@ service /sts on new http:Listener(9093) {
         
     }
 
-    resource function post test(http:Request request) returns json {
-        io:println(request.getJsonPayload());
-        return {};
-    }
-
     resource function get refreshToken(http:Request request, http:Caller caller) returns ()|error{
         http:Response response = new;
-        http:Cookie[] cookies = request.getCookies();
-        string? refreshToken = ();
-        foreach http:Cookie cookie in cookies {
-            if cookie.name == "refreshToken" && check cookie.isValid(){
-                refreshToken = cookie.toStringValue();
-                break;
+        do{
+            http:Cookie[] cookies = request.getCookies();
+            string? refreshToken = ();
+            foreach http:Cookie cookie in cookies {
+                if cookie.name == "refreshToken" && check cookie.isValid(){
+                    refreshToken = cookie.toStringValue();
+                    break;
+                }
             }
-        }
 
-        if refreshToken is () {
-            check respondError(response, caller, 401);
-            return;
-        }
-
-        string? | error storedUserID = getRefreshTokenUser(refreshToken);
-
-        if(storedUserID is error){
-            check respondError(response, caller, 500);
-            return;
-        }
-
-        if(storedUserID is ()){
-            check respondError(response, caller, 401);
-            return;
-        }
-
-        jwt:Payload? _ = check validateToken(refreshToken, storedUserID, response, caller);
-
-        json? userData = check getUserData(response, caller, storedUserID);
-
-        if userData is (){
-            check respondError(response, caller, 500);
-            return;
-        }
-
-        string|jwt:Error | error accessToken = generateToken(userData, 3600);
-
-        if accessToken is jwt:Error || accessToken is error{
-            check respondError(response, caller, 500);
-            return;
-        }
-
-        response.setPayload({
-            data:{
-                accessToken
+            if refreshToken is () {
+                check respondError(response, caller, 401);
+                return;
             }
-        });
-        response.statusCode = 200;
-        check caller->respond(response);
+
+            string storedUserID = check getRefreshTokenUser(refreshToken);
+
+            jwt:Payload? _ = check validateToken(refreshToken, storedUserID, response, caller);
+
+            json? userData = check getUserData(response, caller, storedUserID);
+
+            string accessToken = check generateToken(userData, 3600);
+
+            response.setPayload({
+                data:{
+                    accessToken
+                }
+            });
+            response.statusCode = 200;
+            check caller->respond(response);
+        }
+        on fail {
+            check respondError(response, caller, 500);
+        }
         return;
     }
 }
@@ -163,11 +137,11 @@ public function verifyIDPToken(http:Request request, http:Response response, htt
 }
 
 
-public function getUserData(http:Response response, http:Caller caller, string userID) returns json? | error{
+public function getUserData(http:Response response, http:Caller caller, string userID) returns json | error{
     http:Client userClient = check new ("http://localhost:9095/userService");
     json | error responseData = userClient->get("/user/" + userID);
     if (responseData is error){
-        return respondError(response, caller, 500);
+        return responseData;
     }
     return check responseData.data;
 }
@@ -217,16 +191,12 @@ public function validateToken(string refreshToken, string storedUserID,  http:Re
 
 
 
-public function getRefreshTokenUser(string refreshToken) returns string? | error{
+public function getRefreshTokenUser(string refreshToken) returns string | error{
     final mysql:Client dbClient =  check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
 
-    string?|sql:Error result = dbClient->queryRow(`SELECT user_id FROM refresh_token WHERE refresh_token = ${refreshToken};`);
+    string|sql:Error result = dbClient->queryRow(`SELECT user_id FROM refresh_token WHERE refresh_token = ${refreshToken};`);
 
     check dbClient.close();
-
-    if(result is error){
-        return ();
-    }
 
     return result;
 }
