@@ -4,7 +4,6 @@ import ballerinax/mysql;
 import ballerina/sql;
 import ballerina/regex;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
-import ballerina/io;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -14,6 +13,14 @@ configurable string DATABASE = ?;
 
 configurable string tokenIssuer = ?;
 configurable string tokenAudience = ?;
+
+public type Payload record {
+    Data data;
+};
+
+public type Data record {
+    string accessToken;
+};
 
 
 # A service representing a network-accessible API
@@ -29,28 +36,19 @@ configurable string tokenAudience = ?;
 }
 service /sts on new http:Listener(9093) {
 
-    resource function get accessToken(http:Request request, http:Caller caller) returns ()|error {
-
-
-        http:Response response = new;
+    resource function get accessToken(@http:Header string authorization) returns http:Forbidden | http:Response | http:InternalServerError {
 
         do{
-            // json | error idpResult = verifyIDPToken(request, response, caller);
-
-            // if idpResult is error{
-            //     check idpResult;
-            //     return;
-            // }
+            // json idpResult = check verifyIDPToken(authorization);
 
             // if check idpResult.active == false {
-            //     check respondError(response, caller, 403);
-            //     return;
+            //     return http:FORBIDDEN;
             // }
 
             // string userID = check idpResult.sub;
             string userID = "baf7303c-f34a-4c7e-b11d-4ed8186ad29c";
 
-            json? userData = check getUserData(response, caller, userID);
+            json? userData = check getUserData(userID);
 
             string accessToken = check generateToken(userData, 3600);
 
@@ -67,26 +65,28 @@ service /sts on new http:Listener(9093) {
 
             http:Cookie refreshTokenCookie = new("refreshToken", refreshToken, cookieOptions);
 
+            http:Response response = new;
+
             response.addCookie(refreshTokenCookie);
 
-            response.setPayload({
-                data:{
+            Payload responsePayload = {
+                data : {
                     accessToken
                 }
-            });
+            };
+
+            response.setPayload(<json>responsePayload);
 
             response.statusCode = 200;
-            check caller->respond(response);
+            return response;
         }
         on fail {
-            response.statusCode = 500;
-            check caller->respond(response);
+            return http:INTERNAL_SERVER_ERROR;
         }
-        return;
         
     }
 
-    resource function get refreshToken(http:Request request, http:Caller caller) returns ()|error{
+    resource function get refreshToken(http:Request request) returns http:Unauthorized | http:Forbidden | http:Response | http:InternalServerError{
         http:Response response = new;
         do{
             http:Cookie[] cookies = request.getCookies();
@@ -99,50 +99,49 @@ service /sts on new http:Listener(9093) {
             }
 
             if refreshToken is () {
-                check respondError(response, caller, 401);
-                return;
+                return http:UNAUTHORIZED;
             }
 
             string storedUserID = check getRefreshTokenUser(refreshToken);
 
-            jwt:Payload? _ = check validateToken(refreshToken, storedUserID, response, caller);
+            jwt:Payload | http:Forbidden | http:Unauthorized tokenPayload = validateToken(refreshToken, storedUserID);
 
-            json? userData = check getUserData(response, caller, storedUserID);
+            if tokenPayload is http:Unauthorized || tokenPayload is http:Forbidden {
+                return tokenPayload;
+            }
+
+            json userData = check getUserData(storedUserID);
 
             string accessToken = check generateToken(userData, 3600);
 
-            response.setPayload({
-                data:{
+            Payload responsePayload = {
+                data : {
                     accessToken
                 }
-            });
+            };
+
+            response.setPayload(<json>responsePayload);
             response.statusCode = 200;
-            check caller->respond(response);
+            return response;
         }
         on fail {
-            check respondError(response, caller, 500);
+            return http:INTERNAL_SERVER_ERROR;
         }
-        return;
     }
 }
 
-public function verifyIDPToken(http:Request request, http:Response response, http:Caller caller) returns json | error {
-    string header = check request.getHeader("Authorization");
+public function verifyIDPToken(string header) returns json | error {
     string idpToken = (regex:split(header, " "))[1];
     http:Client idpClient = check new("https://api.asgardeo.io/t/ravin/oauth2");
-    json | error res = idpClient->post("/introspect", headers = ({"Content-Type":"application/x-www-form-urlencoded","Connection": "keep-alive", "Authorization":"Basic dEJkVG42NjVtV2F5d2d6bTdkc1MyYUZ4MzVvYTpBS3V3enBORlVCbHBwdjhyazduSFFVQVlNWTBh"}),message = "token="+idpToken, targetType = json);
-    io:println(res);
-    return {};
+    json res = check idpClient->post("/introspect", headers = ({"Content-Type":"application/x-www-form-urlencoded","Connection": "keep-alive", "Authorization":"Basic dEJkVG42NjVtV2F5d2d6bTdkc1MyYUZ4MzVvYTpBS3V3enBORlVCbHBwdjhyazduSFFVQVlNWTBh"}),message = "token="+idpToken, targetType = json);
+    return res;
     
 }
 
 
-public function getUserData(http:Response response, http:Caller caller, string userID) returns json | error{
+public function getUserData(string userID) returns json | error{
     http:Client userClient = check new ("http://localhost:9095/userService");
-    json | error responseData = userClient->get("/user/" + userID);
-    if (responseData is error){
-        return responseData;
-    }
+    json responseData = check userClient->get("/user/" + userID);
     return check responseData.data;
 }
 
@@ -165,7 +164,7 @@ public function generateToken(json userData, decimal expTime) returns string | j
     return jwt:issue(issueConfig);
 }
 
-public function validateToken(string refreshToken, string storedUserID,  http:Response response, http:Caller caller) returns jwt:Payload | http:ListenerError? {
+public function validateToken(string refreshToken, string storedUserID) returns jwt:Payload | http:Unauthorized | http:Forbidden {
     jwt:ValidatorConfig config = {
         issuer: tokenIssuer,
         audience: tokenAudience,
@@ -178,12 +177,11 @@ public function validateToken(string refreshToken, string storedUserID,  http:Re
     jwt:Payload | jwt:Error payload = jwt:validate(refreshToken, config);
 
     if payload is jwt:Error{
-        return respondError(response, caller, 401);
-        
+        return http:UNAUTHORIZED;       
     }
 
     if payload.sub != storedUserID {
-        return respondError(response, caller, 403);
+        return http:FORBIDDEN;
     }
 
     return payload;
@@ -206,10 +204,4 @@ public function storeRefreshTokenUser(string refreshToken, string userID) return
     _ = check dbClient->execute(`INSERT INTO refresh_token (user_id, refresh_token) VALUES (${userID}, ${refreshToken});`);
 
     check dbClient.close();
-}
-
-public function respondError(http:Response response, http:Caller caller, int statusCode) returns http:ListenerError? {
-    response.statusCode = statusCode;
-    http:ListenerError? result = caller->respond(response);
-    return result;
 }
