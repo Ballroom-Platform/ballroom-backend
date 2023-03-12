@@ -34,11 +34,8 @@ service rabbitmq:Service on channelListener {
 
     remote function onMessage(data_model:SubmissionMessage submissionEvent) returns error? {
 
-        io:println(submissionEvent);
         // need to evaluate the score
         data_model:ScoredSubmissionMessage scoredSubMsg = check handleEvent(submissionEvent);
-
-        io:println(scoredSubMsg);
 
         check self.rabbitmqClient->publishMessage({
             content: scoredSubMsg,
@@ -54,27 +51,24 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     // get the file
     string|error storedLocation = getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.submissionId);
 
-
     // unzip the submissionZip
-    // string subProblemDir = "problem_" + string:substring(event.problemId, 0, <int>string:indexOf(event.problemId, ".", 0)) + "_" +
-    // string:substring(event.problemId, <int>string:indexOf(event.problemId, ".", 0) + 1, string:length(event.problemId));
-    // string submissionDir = check file:joinPath(tempDir, regex:split(event.wso2Email, "@")[0] + "_" + subProblemDir);
-    // string[] unzipArguments = ["unzip -d " + submissionDir + " " + submissionZipFilePath];
     string[] unzipArguments = ["unzip " + basePath + fileNameWithExtension + " -d " + basePath + submissionEvent.fileName + "/"];
 
-    _ = check executeCommand(unzipArguments);
-
+    string[]|error executeCommandResult1 = executeCommand(unzipArguments);
 
     // replace the test cases
-    string testsDirPath = getTestDirPath(submissionEvent.challengeId);
     check file:remove(basePath + submissionEvent.fileName + "/tests", file:RECURSIVE);
-    check file:copy(testsDirPath,check storedLocation + "/tests/");
 
-    // run the test cases
+    // get the test case file and store in the same location
+    () _ = check getAndStoreTestCase(submissionEvent.challengeId, check storedLocation);
+
+    string[] testUnzipArguments = ["unzip " + basePath + submissionEvent.fileName + "/testsZip" + " -d " + basePath + submissionEvent.fileName + "/tests/"];
+    string[]|error executeCommandResult2 = executeCommand(testUnzipArguments);
+
     string[] testCommand = ["cd " + check storedLocation +  " && bal test"];
+
     string[] executeCommandResult = check executeCommand(testCommand);
 
-    // calculate a score from the output
     float score = check calculateScore(executeCommandResult);
 
     data_model:ScoredSubmissionMessage scoredSubMsg = {subMsg: submissionEvent, score: score};
@@ -170,6 +164,14 @@ function getAndStoreFile(string fileName, string fileExtension, string submissio
     return basePath + "/" + fileName + "/";
 }
 
+function getAndStoreTestCase(string challengeId, string location) returns error?{
+
+    byte[] fileFromDB = check getTestCaseFromDB(challengeId);
+
+    check io:fileWriteBytes(location + "/testsZip", fileFromDB);
+
+}
+
 # Description
 #
 # + arguments - String array which contains arguments to execute
@@ -207,8 +209,17 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
 isolated function getFileFromDB(string submissionId) returns byte[]|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     byte[] submissionFileBlob = check dbClient->queryRow(
-        `SELECT submission_file FROM submission WHERE submission_id = ${submissionId}`
+        `SELECT submissionFile FROM Submissions WHERE submissionId = ${submissionId}`
     );
     check dbClient.close();
     return submissionFileBlob;
+}
+
+isolated function getTestCaseFromDB(string challengeId) returns byte[]|error {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    byte[] testCaseFileBlob = check dbClient->queryRow(
+        `SELECT testcase FROM Challenges WHERE challenge_id = ${challengeId}`
+    );
+    check dbClient.close();
+    return testCaseFileBlob;
 }

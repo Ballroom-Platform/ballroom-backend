@@ -7,6 +7,7 @@ import ballerina/io;
 import ballerina/mime;
 // import ballerina/file;
 import ballerina/regex;
+import ballerina/uuid;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -22,7 +23,7 @@ type UpdatedChallenge record{
 
 # A service representing a network-accessible API
 # bound to port `9090`.
-service / on new http:Listener(9090) {
+service / on new http:Listener(9092) {
 
     resource function get challenge/[string challengeId]() returns data_model:Challenge|error? {
         
@@ -128,8 +129,10 @@ isolated function updateChallenge(string challengeId, UpdatedChallenge updatedCh
 
 isolated function addChallenge(data_model:Challenge newChallenge, byte[] testcaseFile, string fileName, string fileExtension) returns string|int?|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    string generatedChallengeId = "challenge-" + uuid:createType1AsString();
+
     sql:ExecutionResult execRes = check dbClient->execute(`
-        INSERT INTO Challenges (title, description, difficulty, testcase) VALUES (${newChallenge.title}, ${newChallenge.description}, ${newChallenge.difficulty}, ${testcaseFile})
+        INSERT INTO Challenges (challenge_id, title, description, difficulty, testcase) VALUES (${generatedChallengeId},${newChallenge.title}, ${newChallenge.description}, ${newChallenge.difficulty}, ${testcaseFile})
     `);
     check dbClient.close();
     return execRes.lastInsertId;
