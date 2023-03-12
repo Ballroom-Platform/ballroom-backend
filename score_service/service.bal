@@ -77,13 +77,3 @@ service /score on new http:Listener(9092) {
         
     }
 }
-
-isolated function updateScore(string score, string submission_id) returns sql:ExecutionResult|sql:Error {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-     sql:ExecutionResult|sql:Error execute = dbClient->execute(
-        `UPDATE Submissions SET score = ${score} WHERE submissionId=${submission_id};`
-    );
-    check dbClient.close();
-
-    return execute;
-}
