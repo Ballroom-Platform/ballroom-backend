@@ -23,7 +23,7 @@ type UpdatedChallenge record{
 
 # A service representing a network-accessible API
 # bound to port `9090`.
-service / on new http:Listener(9092) {
+service /challengeService on new http:Listener(9096) {
 
     resource function get challenge/[string challengeId]() returns data_model:Challenge|error? {
         
@@ -106,7 +106,7 @@ service / on new http:Listener(9092) {
 isolated function deleteChallenge(string challengeId) returns error?{
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
-        DELETE FROM Challenges WHERE challenge_id = ${challengeId};
+        DELETE FROM challenge WHERE challenge_id = ${challengeId};
     `);
     if execRes.affectedRowCount == 0 {
         return error("INVALID CHALLENGE_ID.");
@@ -118,7 +118,7 @@ isolated function deleteChallenge(string challengeId) returns error?{
 isolated function updateChallenge(string challengeId, UpdatedChallenge updatedChallenge) returns error?{
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
-        UPDATE Challenges SET title = ${updatedChallenge.title}, description = ${updatedChallenge.description}, difficulty = ${updatedChallenge.difficulty} WHERE challenge_id = ${challengeId};
+        UPDATE challenge SET title = ${updatedChallenge.title}, description = ${updatedChallenge.description}, difficulty = ${updatedChallenge.difficulty} WHERE challenge_id = ${challengeId};
     `);
     if execRes.affectedRowCount == 0 {
         return error("INVALID CHALLENGE_ID.");
@@ -132,7 +132,7 @@ isolated function addChallenge(data_model:Challenge newChallenge, byte[] testcas
     string generatedChallengeId = "challenge-" + uuid:createType1AsString();
 
     sql:ExecutionResult execRes = check dbClient->execute(`
-        INSERT INTO Challenges (challenge_id, title, description, difficulty, testcase) VALUES (${generatedChallengeId},${newChallenge.title}, ${newChallenge.description}, ${newChallenge.difficulty}, ${testcaseFile})
+        INSERT INTO challenge (challenge_id, title, description, difficulty, testcase) VALUES (${generatedChallengeId},${newChallenge.title}, ${newChallenge.description}, ${newChallenge.difficulty}, ${testcaseFile})
     `);
     check dbClient.close();
     return execRes.lastInsertId;
@@ -140,7 +140,7 @@ isolated function addChallenge(data_model:Challenge newChallenge, byte[] testcas
 
 isolated function getChallenge(string challengeId) returns data_model:Challenge|sql:Error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-    data_model:Challenge|sql:Error result = dbClient->queryRow(`SELECT * FROM Challenges WHERE challenge_id = ${challengeId}`);
+    data_model:Challenge|sql:Error result = dbClient->queryRow(`SELECT * FROM challenge WHERE challenge_id = ${challengeId}`);
     check dbClient.close();
     return result;
 
@@ -148,7 +148,7 @@ isolated function getChallenge(string challengeId) returns data_model:Challenge|
 
 isolated function getChallengesWithDifficulty(string difficulty) returns data_model:Challenge[]|sql:Error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-    stream<data_model:Challenge,sql:Error?> result = dbClient->query(`SELECT * FROM Challenges WHERE difficulty = ${difficulty}`);
+    stream<data_model:Challenge,sql:Error?> result = dbClient->query(`SELECT * FROM challenge WHERE difficulty = ${difficulty}`);
     io:println(result);
     check dbClient.close();
 

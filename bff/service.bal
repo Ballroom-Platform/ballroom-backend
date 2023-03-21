@@ -4,7 +4,7 @@ http:JwtValidatorConfig config = {
     issuer: "ballroomSTS",
     audience: "ballroomBFF",
     signatureConfig: {
-        certFile: "./certificates/server.crt"
+        certFile: "./certificates/jwt/server.crt"
     },
     scopeKey: "scp" 
 };
@@ -14,12 +14,19 @@ service /api on new http:Listener(9099) {
         auth: [
             {
                 jwtValidatorConfig : config,
-                scopes : ["admin"]
+                scopes : ["contestant", "admin"]
             }
         ]
     }
-    resource function get hello(http:Request req) returns string {
+    resource function get contests/[string status]() returns json | http:InternalServerError {
         
-        return "Hello";
+        do{
+            http:Client contestService = check new("http://localhost:9097/contestService");
+            json res = check contestService->get("/contest/active");
+            return res;
+        }on fail{
+            return http:INTERNAL_SERVER_ERROR;
+        }
+        
     }
 }

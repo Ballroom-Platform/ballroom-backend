@@ -29,7 +29,7 @@ public isolated function generateToken(json userData, decimal expTime) returns s
             expTime: expTime,
             signatureConfig: {
                 config: {
-                    keyFile: "./certificates/server.key"
+                    keyFile: "./certificates/jwt/server.key"
                 }
             },customClaims: {
                 user: userData,
@@ -45,7 +45,7 @@ public isolated function validateToken(string refreshToken, string storedUserID)
         issuer: tokenIssuer,
         audience: tokenAudience,
         signatureConfig: {
-            certFile: "./certificates/server.crt"
+            certFile: "./certificates/jwt/server.crt"
         }
     };
 
