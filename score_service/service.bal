@@ -1,9 +1,7 @@
 import ballerinax/rabbitmq;
 import wso2/data_model;
-import ballerinax/mysql;
+import ballerina/http;
 import ballerina/sql;
-import ballerinax/mysql.driver as _;
-import ballerina/io;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -31,18 +29,51 @@ service rabbitmq:Service on channelListener {
     remote function onMessage(data_model:ScoredSubmissionMessage scoredSubmissionEvent) returns error? {
 
         // Throw the error for now
-         _ = check updateScore(scoredSubmissionEvent.score.toString(),scoredSubmissionEvent.subMsg.submissionId);
-         io:println(scoredSubmissionEvent.subMsg.submissionId + " updated");
-
+        _ = check updateScore(scoredSubmissionEvent.score.toString(),scoredSubmissionEvent.subMsg.submissionId);
+        return;
     }
 }
+# A service representing a network-accessible API
+# bound to port `9090`.
+# // The service-level CORS config applies globally to each `resource`.
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+        allowCredentials: false,
+        allowHeaders: ["CORELATION_ID"],
+        exposeHeaders: ["X-CUSTOM-HEADER"],
+        maxAge: 84900
+    }
+}
+service /score on new http:Listener(9092) {
 
-isolated function updateScore(string score, string submission_id) returns sql:ExecutionResult|sql:Error {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-     sql:ExecutionResult|sql:Error execute = dbClient->execute(
-        `UPDATE Submissions SET score = ${score} WHERE submissionId=${submission_id};`
-    );
-    check dbClient.close();
+    # A resource for generating greetings
+    #
+    # + submissionId - Parameter Description
+    # + return - string name with hello message or error
+    isolated resource function get submissionScore/[string submissionId]() returns http:InternalServerError | Payload {
+        do{
+            
+            string | sql:Error result = check getSubmissionScore(submissionId);
+            
+            if(result is sql:Error){
+                Payload responsePayload = {
+                    message : "No submission found",
+                    data : ""
+                };
+                return responsePayload;
+            }
 
-    return execute;
+            Payload responsePayload = {
+                message : "Submission found",
+                data : result
+            };
+
+            return responsePayload;
+        }
+        on fail {
+            return http:INTERNAL_SERVER_ERROR;
+        }
+        
+    }
 }

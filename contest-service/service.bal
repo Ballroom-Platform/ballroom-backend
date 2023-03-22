@@ -40,11 +40,7 @@ type NewContest record {
 };
 
 # A service representing a network-accessible API
-# bound to port `9090`.
-# 
-# 
-# 
-
+# bound to port `9098`.
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
@@ -54,7 +50,7 @@ type NewContest record {
         maxAge: 84900
     }
 }
-service /contestService on new http:Listener(9090) {
+service /contestService on new http:Listener(9098) {
 
     resource function get contest/[string contestId]() returns data_model:Contest|error? {
         
@@ -179,7 +175,7 @@ function addChallengeToContest(string contestId, string challengeId) returns str
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
 
     sql:ExecutionResult execRes = check dbClient->execute(`
-        INSERT INTO Contest_Challenge (contest_id, challenge_id) VALUES (${contestId}, ${challengeId});
+        INSERT INTO contest_challenge (contest_id, challenge_id) VALUES (${contestId}, ${challengeId});
     `);
     check dbClient.close();
     return execRes.lastInsertId;
@@ -188,7 +184,7 @@ function addChallengeToContest(string contestId, string challengeId) returns str
 function deleteChallengeFromContest(string contestId, string challengeId) returns string|int|error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
-        DELETE FROM Contest_Challenge WHERE contest_id = ${contestId} AND challenge_id = ${challengeId};
+        DELETE FROM contest_challenge WHERE contest_id = ${contestId} AND challenge_id = ${challengeId};
     `);
     check dbClient.close();
     return execRes.lastInsertId;
@@ -197,7 +193,7 @@ function deleteChallengeFromContest(string contestId, string challengeId) return
 function deleteContest(string contestId) returns error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
-        DELETE FROM Contests WHERE contest_id = ${contestId} AND CURRENT_TIMESTAMP() <= start_time;
+        DELETE FROM contest WHERE contest_id = ${contestId} AND CURRENT_TIMESTAMP() <= start_time;
     `);
     if execRes.affectedRowCount == 0 {
         return error("INVALID CONTEST_ID OR CONTEST IS ONGOING OR ENDED.");
@@ -209,7 +205,7 @@ function deleteContest(string contestId) returns error? {
 function getContestChallenges(string contestId) returns error|string[]|sql:Error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     
-    stream<ChallengeId,sql:Error?> result = dbClient->query(`SELECT challenge_id FROM Contest_Challenge WHERE contest_id = ${contestId};`);
+    stream<ChallengeId,sql:Error?> result = dbClient->query(`SELECT challenge_id FROM contest_challenge WHERE contest_id = ${contestId};`);
     check dbClient.close();
 
     string[]|sql:Error? listOfChallengeIds = from ChallengeId challengeId in result select challengeId.challengeId;
@@ -220,7 +216,7 @@ function getContestChallenges(string contestId) returns error|string[]|sql:Error
 function updateContest(string contestId, UpdatedContest toBeUpdatedContest) returns error?{
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
-        UPDATE Contests SET name = ${toBeUpdatedContest.name}, start_time = ${toBeUpdatedContest.startTime}, end_time = ${toBeUpdatedContest.endTime}, moderator = ${toBeUpdatedContest.moderator} WHERE contest_id = ${contestId};
+        UPDATE contest SET name = ${toBeUpdatedContest.name}, start_time = ${toBeUpdatedContest.startTime}, end_time = ${toBeUpdatedContest.endTime}, moderator = ${toBeUpdatedContest.moderator} WHERE contest_id = ${contestId};
     `);
     if execRes.affectedRowCount == 0 {
         return error("INVALID CONTEST_ID.");
@@ -233,11 +229,11 @@ function getContestsWithStatus(string status) returns data_model:Contest[]|sql:E
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ParameterizedQuery query = ``;
     if status.equalsIgnoreCaseAscii("future") {
-        query = `SELECT * FROM Contests WHERE CURRENT_TIMESTAMP() <= start_time`;
+        query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() <= start_time;`;
     } else if status.equalsIgnoreCaseAscii("present"){
-        query = `SELECT * FROM Contests WHERE CURRENT_TIMESTAMP() BETWEEN start_time AND end_time`;
+        query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() BETWEEN start_time AND end_time;`;
     } else if status.equalsIgnoreCaseAscii("past") {
-        query = `SELECT * FROM Contests WHERE CURRENT_TIMESTAMP() >= end_time`;
+        query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() >= end_time;`;
     } else {
         return error("INVALID STATUS!!");
     }
@@ -254,7 +250,7 @@ function addContest(data_model:Contest newContest) returns string|int?|error{
     string generatedContestId = "contest-" + uuid:createType1AsString();
 
     sql:ExecutionResult execRes = check dbClient->execute(`
-        INSERT INTO Contests (contest_id, name, start_time, end_time, moderator) VALUES (${generatedContestId},${newContest.name}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
+        INSERT INTO contest (contest_id, name, start_time, end_time, moderator) VALUES (${generatedContestId},${newContest.name}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
     `);
     check dbClient.close();
     return execRes.lastInsertId;
@@ -262,7 +258,7 @@ function addContest(data_model:Contest newContest) returns string|int?|error{
 
 function getContest(string contestId) returns data_model:Contest|sql:Error|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-    data_model:Contest|sql:Error result = dbClient->queryRow(`SELECT * FROM Contests WHERE contest_id = ${contestId}`);
+    data_model:Contest|sql:Error result = dbClient->queryRow(`SELECT * FROM contest WHERE contest_id = ${contestId}`);
     check dbClient.close();
     return result;
 }
