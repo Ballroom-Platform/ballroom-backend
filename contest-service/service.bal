@@ -28,17 +28,46 @@ type UpdatedContest record {
 
 type ChallengeId record {
     @sql:Column {name: "challenge_id"}
-    int challengeId;
+    string challengeId;
+};
+
+type NewContest record {
+    string name;
+    @sql:Column {name: "start_time"}
+    time:Civil startTime;
+    @sql:Column {name: "end_time"}
+    time:Civil endTime;
 };
 
 # A service representing a network-accessible API
 # bound to port `9090`.
+# 
+# 
+# 
+
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+        allowCredentials: false,
+        allowHeaders: ["CORELATION_ID"],
+        exposeHeaders: ["X-CUSTOM-HEADER", "Authorization"],
+        maxAge: 84900
+    }
+}
 service /contestService on new http:Listener(9090) {
 
     resource function get contest/[string contestId]() returns data_model:Contest|error? {
         
         data_model:Contest contest = check getContest(contestId);
         return contest;
+    }
+
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
+        }
     }
 
     resource function get contests/[string status]() returns data_model:Contest[]|error? {
@@ -53,9 +82,17 @@ service /contestService on new http:Listener(9090) {
         return listOfContests;
     }
 
-    resource function get contest/[string contestId]/challenges () returns error|int[]|sql:Error? {
-        error|int[]|sql:Error? contestChallenges = getContestChallenges(contestId);
-        if !(contestChallenges is int[]) {
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
+        }
+    }
+
+    resource function get contest/[string contestId]/challenges () returns error|string[]|sql:Error? {
+        error|string[]|sql:Error? contestChallenges = getContestChallenges(contestId);
+        if !(contestChallenges is string[]) {
             return error("DATABASE ERROR");
             // return contestChallenges;
         }
@@ -63,14 +100,37 @@ service /contestService on new http:Listener(9090) {
         return contestChallenges;
     }
 
-    resource function post contest (@http:Payload data_model:Contest newContest) returns string|int|error?{
-        string|int|error? contestId =  addContest(newContest);
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
+        }
+    }
+    resource function post contest (@http:Payload NewContest newContest) returns string|int|error?{
+        string generatedContestId = "contest_" + uuid:createType1AsString();
+        // data_model:Contest newContestToAdd = {...newContest, moderator: "", contestId: generatedContestId   };
+        data_model:Contest newContestToAdd = {
+                                                 contestId : generatedContestId,
+                                                 name: newContest.name,
+                                                 startTime: newContest.startTime,
+                                                 endTime: newContest.endTime,
+                                                 moderator: "asg_usr_001"
+                                            };
+        string|int|error? contestId =  addContest(newContestToAdd);
         if contestId is error {
             return error("ERROR OCCURED, COULD NOT INSERT CONTEST");
         }
         return contestId;
     }
 
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
+        }
+    }
     resource function post contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
         string|int|error? result =  addChallengeToContest(contestId, challengeId);
         if result is error {
@@ -146,13 +206,13 @@ function deleteContest(string contestId) returns error? {
     return;
 }
 
-function getContestChallenges(string contestId) returns error|int[]|sql:Error? {
+function getContestChallenges(string contestId) returns error|string[]|sql:Error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     
     stream<ChallengeId,sql:Error?> result = dbClient->query(`SELECT challenge_id FROM Contest_Challenge WHERE contest_id = ${contestId};`);
     check dbClient.close();
 
-    int[]|sql:Error? listOfChallengeIds = from ChallengeId challengeId in result select challengeId.challengeId;
+    string[]|sql:Error? listOfChallengeIds = from ChallengeId challengeId in result select challengeId.challengeId;
 
     return listOfChallengeIds;
 }

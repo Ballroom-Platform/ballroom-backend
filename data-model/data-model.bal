@@ -125,7 +125,7 @@ public type ScoredSubmissionMessage record {
 // }
 public type Challenge record{
     @sql:Column {name: "challenge_id"}
-    int challengeId;
+    string challengeId;
     string title;
     string description;
     // Not sure about the type here, byte[]?
@@ -137,7 +137,7 @@ public type Challenge record{
 
 public type Contest record {
     @sql:Column {name: "contest_id"}
-    int contestId;
+    string contestId;
     string name;
     @sql:Column {name: "start_time"}
     time:Civil startTime;
