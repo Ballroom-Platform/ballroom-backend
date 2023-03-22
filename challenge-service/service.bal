@@ -22,11 +22,26 @@ type UpdatedChallenge record{
 };
 
 # A service representing a network-accessible API
-# bound to port `9090`.
+# bound to port `9096`.
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+        allowCredentials: false,
+        allowHeaders: ["CORELATION_ID"],
+        exposeHeaders: ["X-CUSTOM-HEADER", "Authorization"],
+        maxAge: 84900
+    }
+}
 service /challengeService on new http:Listener(9096) {
 
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
+        }
+    }
     resource function get challenge/[string challengeId]() returns data_model:Challenge|error? {
-        
         data_model:Challenge challenge = check getChallenge(challengeId);
         return challenge;
     }
@@ -37,12 +52,19 @@ service /challengeService on new http:Listener(9096) {
         return challengesWithDifficulty;
     }
 
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
+        }
+    }
     resource function post challenge(http:Request request) returns string|int|error? {
         
         mime:Entity[] bodyParts = check request.getBodyParts();
         io:println(request.getContentType());
 
-        data_model:Challenge newChallenge = {title: "", challengeId: 0, description: "", difficulty: "HARD", testCase: []};
+        data_model:Challenge newChallenge = {title: "", challengeId: "", description: "", difficulty: "HARD", testCase: []};
 
         string fileName = "testCaseFile";
 
