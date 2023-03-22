@@ -1,85 +1,78 @@
 /* -------------------------USERS SERVICE---------------------------- */
-CREATE TABLE Users (
-    asgardeo_user_id VARCHAR(255) NOT NULL,
+CREATE TABLE user (
+    user_id VARCHAR(255) NOT NULL,
     username VARCHAR(255) NOT NULL,
-    fullname VARCHAR(255),
+    fullname VARCHAR(255) NOT NULL,
     role VARCHAR(255) NOT NULL,
-    PRIMARY KEY (asgardeo_user_id),
+    PRIMARY KEY (user_id),
     UNIQUE (username)
 );
 
-ALTER TABLE Users
-ADD role VARCHAR(255) NOT NULL;
-/* -------------------------USERS SERVICE---------------------------- */
-
-
 /* -------------------------CONTESTS SERVICE---------------------------- */
 
-CREATE TABLE Contests (
+CREATE TABLE contest (
     contest_id VARCHAR(255) NOT NULL,
-    name VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description VARCHAR(500),
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
-    /* This could be a field that needs to be consistent in relation to Users*/
     moderator VARCHAR(255) NOT NULL,
+    image_url VARCHAR(255),
     PRIMARY KEY (contest_id),
-    FOREIGN KEY (moderator) REFERENCES Users(asgardeo_user_id)
-    /* add constraint that start_time < end_time */
+    FOREIGN KEY (moderator) REFERENCES user(user_id)
+    CHECK (start_time < end_time)
 );
 
-CREATE TABLE Contest_Challenge (
+CREATE TABLE contest_challenge (
     contest_id VARCHAR(255) NOT NULL,
-    /* This could be a field that needs to be consistent in relation to Challenges*/
     challenge_id VARCHAR(255) NOT NULL,
-    -- Have to put on delete cascade
-    FOREIGN KEY (contest_id) REFERENCES Contests(contest_id) ON DELETE CASCADE,
-    FOREIGN KEY (challenge_id) REFERENCES Challenges(challenge_id)
+    FOREIGN KEY (contest_id) REFERENCES contest(contest_id) ON DELETE CASCADE,
+    FOREIGN KEY (challenge_id) REFERENCES challenge(challenge_id),
+    PRIMARY KEY (contest_id, challenge_id)
 );
 
-CREATE TABLE Contest_Users (
+CREATE TABLE contest_user (
     contest_id VARCHAR(255) NOT NULL,
-    /* This could be a field that needs to be consistent in relation to Users*/
-    user_id VARCHAR(255) NOT NULL
+    user_id VARCHAR(255) NOT NULL,
+    FOREIGN KEY (contest_id) REFERENCES contest(contest_id),
+    FOREIGN KEY (user_id) REFERENCES user(user_id),
+    PRIMARY KEY (contest_id, user_id)
 );
 /* -------------------------CONTESTS SERVICE---------------------------- */
 
 
 /* -------------------------CHALLENGES SERVICE---------------------------- */
-CREATE TABLE Challenges (
+CREATE TABLE challenge (
     challenge_id VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
-    description VARCHAR(255) NOT NULL,
-    /* testcase BLOB NOT NULL, */
+    description VARCHAR(500) NOT NULL,
+    constraints VARCHAR(500),
+    challenge_template BLOB,
     difficulty ENUM('EASY', 'MEDIUM', 'HARD') NOT NULL,
-    testcase BLOB,
+    testcase BLOB NOT NULL,
     PRIMARY KEY (challenge_id)
 );
 /* -------------------------CHALLENGES SERVICE---------------------------- */
 
 /* -------------------------UPLOAD SERVICE---------------------------- */
 
-CREATE TABLE Submissions (
-    submissionId VARCHAR(255) NOT NULL,
-    /* This could be a field that needs to be consistent in relation to Users*/
-    userId VARCHAR(255) NOT NULL,
-    /* This could be a field that needs to be consistent in relation to Contests*/
-    contestId VARCHAR(255) NOT NULL,
-    /* This could be a field that needs to be consistent in relation to Challenges*/
-    challengeId VARCHAR(255) NOT NULL,
-    -- submissionFile BLOB NOT NULL,
-    submissionFile BLOB,
-    submittedTime TIMESTAMP NOT NULL,
-    /* Will be updated by challenge service */
-    /* Do we have a separate DB for services? If so do we store the score in the same table or in a separate table so that in the event that we require the system to be divided into many services, we can store that table (the one with the score only) in the score service? */
-    score INT,
-    fileName VARCHAR(255),
-    fileExtension VARCHAR(255),
-    PRIMARY KEY (submissionId),
-    FOREIGN KEY (userId) REFERENCES Users(asgardeo_user_id),
-    FOREIGN KEY (contestId) REFERENCES Contests(contest_id),
-    FOREIGN KEY (challengeId) REFERENCES Challenges(challenge_id)
+CREATE TABLE submission (
+    submission_id VARCHAR(255) NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
+    contest_id VARCHAR(255) NOT NULL,
+    challenge_id VARCHAR(255) NOT NULL,
+    submission_file BLOB,
+    submitted_time TIMESTAMP NOT NULL,
+    score FLOAT,
+    file_name VARCHAR(255) NOT NULL,
+    file_extension VARCHAR(255) NOT NULL,
+    PRIMARY KEY (submission_id),
+    FOREIGN KEY (user_id) REFERENCES user(user_id),
+    FOREIGN KEY (contest_id) REFERENCES contest(contest_id),
+    FOREIGN KEY (challenge_id) REFERENCES challenge(challenge_id)
 );
 /* -------------------------UPLOAD SERVICE---------------------------- */
+
 
 /* These are some dummy values to be inserted into the database at the time of creation */
 INSERT INTO Users VALUES ('asg_usr_01', 'haathim', 'Haathim Munas', 'NORMAL');
