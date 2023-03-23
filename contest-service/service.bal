@@ -5,6 +5,7 @@ import ballerina/sql;
 import ballerinax/mysql.driver as _;
 import ballerina/time;
 import ballerina/uuid;
+import ballerina/io;
 // import ballerina/io;
 // import ballerina/io;
 // import ballerina/mime;
@@ -18,7 +19,7 @@ configurable int PORT = ?;
 configurable string DATABASE = ?;
 
 type UpdatedContest record {
-    string name;
+    string title;
     @sql:Column {name: "start_time"}
     time:Civil startTime;
     @sql:Column {name: "end_time"}
@@ -32,7 +33,8 @@ type ChallengeId record {
 };
 
 type NewContest record {
-    string name;
+    string title;
+    string description;
     @sql:Column {name: "start_time"}
     time:Civil startTime;
     @sql:Column {name: "end_time"}
@@ -51,7 +53,13 @@ type NewContest record {
     }
 }
 service /contestService on new http:Listener(9098) {
-
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
+        }
+    }
     resource function get contest/[string contestId]() returns data_model:Contest|error? {
         
         data_model:Contest contest = check getContest(contestId);
@@ -73,7 +81,8 @@ service /contestService on new http:Listener(9098) {
             if listOfContests.message().equalsIgnoreCaseAscii("INVALID STATUS!!") {
                 return listOfContests;
             }
-            return error("ERROR OCCURED");
+            // return error("ERROR OCCURED");
+            return listOfContests;
         }
         return listOfContests;
     }
@@ -104,18 +113,21 @@ service /contestService on new http:Listener(9098) {
         }
     }
     resource function post contest (@http:Payload NewContest newContest) returns string|int|error?{
+        io:println("REQUEST RECIEVED");
         string generatedContestId = "contest_" + uuid:createType1AsString();
         // data_model:Contest newContestToAdd = {...newContest, moderator: "", contestId: generatedContestId   };
         data_model:Contest newContestToAdd = {
                                                  contestId : generatedContestId,
-                                                 name: newContest.name,
+                                                 title: newContest.title,
+                                                 description: newContest.description,
                                                  startTime: newContest.startTime,
                                                  endTime: newContest.endTime,
-                                                 moderator: "asg_usr_001"
+                                                 moderator: "asg_usr_01"
                                             };
         string|int|error? contestId =  addContest(newContestToAdd);
         if contestId is error {
             return error("ERROR OCCURED, COULD NOT INSERT CONTEST");
+            // return contestId;
         }
         return contestId;
     }
@@ -216,7 +228,7 @@ function getContestChallenges(string contestId) returns error|string[]|sql:Error
 function updateContest(string contestId, UpdatedContest toBeUpdatedContest) returns error?{
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
-        UPDATE contest SET name = ${toBeUpdatedContest.name}, start_time = ${toBeUpdatedContest.startTime}, end_time = ${toBeUpdatedContest.endTime}, moderator = ${toBeUpdatedContest.moderator} WHERE contest_id = ${contestId};
+        UPDATE contest SET title = ${toBeUpdatedContest.title}, start_time = ${toBeUpdatedContest.startTime}, end_time = ${toBeUpdatedContest.endTime}, moderator = ${toBeUpdatedContest.moderator} WHERE contest_id = ${contestId};
     `);
     if execRes.affectedRowCount == 0 {
         return error("INVALID CONTEST_ID.");
@@ -250,7 +262,7 @@ function addContest(data_model:Contest newContest) returns string|int?|error{
     string generatedContestId = "contest-" + uuid:createType1AsString();
 
     sql:ExecutionResult execRes = check dbClient->execute(`
-        INSERT INTO contest (contest_id, name, start_time, end_time, moderator) VALUES (${generatedContestId},${newContest.name}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
+        INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES (${generatedContestId},${newContest.title}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
     `);
     check dbClient.close();
     return execRes.lastInsertId;

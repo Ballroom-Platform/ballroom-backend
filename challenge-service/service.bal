@@ -18,6 +18,7 @@ configurable string DATABASE = ?;
 type UpdatedChallenge record{
     string title;
     string description;
+    string constraints;
     string difficulty;
 };
 
@@ -56,18 +57,36 @@ service /challengeService on new http:Listener(9096) {
         cors: {
             allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
             allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
+        }
+    }
+    resource function get challenges/template/[string challengeId] () returns byte[]|error{
+        final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+
+        byte[] testCaseFileBlob = check dbClient->queryRow(
+            `SELECT challenge_template FROM challenge WHERE challenge_id = ${challengeId}`
+        );
+        check dbClient.close();
+        return testCaseFileBlob;
+    }
+
+
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
         }
     }
     resource function post challenge(http:Request request) returns string|int|error? {
-        
+        io:println("RECVD REQ");
         mime:Entity[] bodyParts = check request.getBodyParts();
         io:println(request.getContentType());
 
-        data_model:Challenge newChallenge = {title: "", challengeId: "", description: "", difficulty: "HARD", testCase: []};
+        data_model:Challenge newChallenge = {title: "", challengeId: "", description: "", difficulty: "HARD", testCase: [], template: [], constraints: ""};
 
         string fileName = "testCaseFile";
-
+        string templateFileName = "templateFile";
         foreach mime:Entity item in bodyParts {
             // check if the body part is a zipped file or normal text
             io:print("content ytpy eis ...");
@@ -81,17 +100,27 @@ service /challengeService on new http:Listener(9096) {
             }
             // body part is a zipped file
             else {
+                string contentDispositionString = item.getContentDisposition().toString();
+                string[] keyArray = regex:split(contentDispositionString, "name=\"");
+                string key = regex:replaceAll(keyArray[1], "\"", "");
                 // Writes the incoming stream to a file using the `io:fileWriteBlocksFromStream` API
                 // by providing the file location to which the content should be written.
                 stream<byte[], io:Error?> streamer = check item.getByteStream();
-                io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/"+fileName+".zip", streamer);
+                if key.equalsIgnoreCaseAscii("testCase") {
+                    io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/"+fileName+".zip", streamer);
+                } else {
+                    io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/"+templateFileName+".zip", streamer);
+                }
+                
                 check streamer.close();
+                io:println("------");
             }
 
         }
 
         byte[] & readonly fileReadBytes = check io:fileReadBytes("/tmp/"+fileName+".zip");
-        string|int? challengeId = check addChallenge(newChallenge, fileReadBytes, fileName, ".zip");
+        byte[] & readonly templateFileReadBytes = check io:fileReadBytes("/tmp/"+templateFileName+".zip");
+        string|int? challengeId = check addChallenge(newChallenge, fileReadBytes, templateFileReadBytes, fileName, ".zip");
         return challengeId;
 
     }
@@ -140,7 +169,7 @@ isolated function deleteChallenge(string challengeId) returns error?{
 isolated function updateChallenge(string challengeId, UpdatedChallenge updatedChallenge) returns error?{
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
-        UPDATE challenge SET title = ${updatedChallenge.title}, description = ${updatedChallenge.description}, difficulty = ${updatedChallenge.difficulty} WHERE challenge_id = ${challengeId};
+        UPDATE challenge SET title = ${updatedChallenge.title}, description = ${updatedChallenge.description}, constraints = ${updatedChallenge.constraints}, difficulty = ${updatedChallenge.difficulty} WHERE challenge_id = ${challengeId};
     `);
     if execRes.affectedRowCount == 0 {
         return error("INVALID CHALLENGE_ID.");
@@ -149,12 +178,12 @@ isolated function updateChallenge(string challengeId, UpdatedChallenge updatedCh
     return;
 }
 
-isolated function addChallenge(data_model:Challenge newChallenge, byte[] testcaseFile, string fileName, string fileExtension) returns string|int?|error {
+isolated function addChallenge(data_model:Challenge newChallenge, byte[] testcaseFile, byte[] templateFile, string fileName, string fileExtension) returns string|int?|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     string generatedChallengeId = "challenge-" + uuid:createType1AsString();
 
     sql:ExecutionResult execRes = check dbClient->execute(`
-        INSERT INTO challenge (challenge_id, title, description, difficulty, testcase) VALUES (${generatedChallengeId},${newChallenge.title}, ${newChallenge.description}, ${newChallenge.difficulty}, ${testcaseFile})
+        INSERT INTO challenge (challenge_id, title, description, constraints, difficulty, testcase, challenge_template) VALUES (${generatedChallengeId},${newChallenge.title}, ${newChallenge.description}, ${newChallenge.constraints}, ${newChallenge.difficulty}, ${testcaseFile}, ${templateFile})
     `);
     check dbClient.close();
     return execRes.lastInsertId;
