@@ -209,7 +209,7 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
 isolated function getFileFromDB(string submissionId) returns byte[]|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     byte[] submissionFileBlob = check dbClient->queryRow(
-        `SELECT submissionFile FROM Submissions WHERE submissionId = ${submissionId}`
+        `SELECT submission_file FROM submission WHERE submission_id = ${submissionId}`
     );
     check dbClient.close();
     return submissionFileBlob;
@@ -218,7 +218,7 @@ isolated function getFileFromDB(string submissionId) returns byte[]|error {
 isolated function getTestCaseFromDB(string challengeId) returns byte[]|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     byte[] testCaseFileBlob = check dbClient->queryRow(
-        `SELECT testcase FROM Challenges WHERE challenge_id = ${challengeId}`
+        `SELECT testcase FROM challenge WHERE challenge_id = ${challengeId}`
     );
     check dbClient.close();
     return testCaseFileBlob;
