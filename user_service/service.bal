@@ -35,4 +35,21 @@ service /userService on new http:Listener(9095) {
         }
         
     }
+
+    resource function post user(@http:Payload data_model:User user) returns Payload | http:InternalServerError {
+        
+        do{
+            _ = check createUser(user);
+
+            Payload responsePayload = {
+                message : "User created",
+                data : user
+            };
+            return responsePayload;
+        }
+        on fail{
+            return http:INTERNAL_SERVER_ERROR;
+        }
+        
+    }
 }
