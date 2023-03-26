@@ -1,5 +1,6 @@
 import ballerina/http;
 import ballerina/jwt;
+import wso2/data_model;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -35,20 +36,33 @@ service /sts on new http:Listener(9093) {
     isolated resource function get accessToken(@http:Header string Authorization) returns http:Forbidden | http:Response | http:InternalServerError {
 
         do{
-            // json idpResult = check verifyIDPToken(authorization);
+            json idpResult = check verifyIDPToken(Authorization);
 
-            // if check idpResult.active == false {
-            //     return http:FORBIDDEN;
-            // }
+            if check idpResult.active == false {
+                return http:FORBIDDEN;
+            }
 
-            // string userID = check idpResult.sub;
-            string userID = "baf7303c-f34a-4c7e-b11d-4ed8186ad29c";
+            string userID = check idpResult.sub;
+            json? userInfo = check getUserInfoFromIDP(Authorization);
+            json? | error userData = getUserData(userID);
 
-            json? userData = check getUserData(userID);
+            if userData is error?{
+                http:Client userClient = check new("http://localhost:9095/userService");
+                data_model:User user = {
+                    fullname: check userInfo?.name,
+                    role: "contestant",
+                    user_id: userID,
+                    username: check userInfo?.username
+                };
+                _ = check userClient->post("/user", headers = {"Content-Type":"application/json"}, message = user.toJson(), targetType = json);
+                
 
-            string accessToken = check generateToken(userData, 3600);
+                userData = check getUserData(userID);
+            }
 
-            string refreshToken = check generateToken(userData, 3600*24*30);
+            string accessToken = check generateToken(check userData, 3600);
+
+            string refreshToken = check generateToken(check userData, 3600*24*30);
 
             check storeRefreshTokenUser(refreshToken, userID);
 
