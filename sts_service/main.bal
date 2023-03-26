@@ -4,12 +4,13 @@ import ballerinax/mysql;
 import ballerina/sql;
 import ballerina/regex;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
-import ballerina/io;
 
 
 public isolated function verifyIDPToken(string header) returns json | error {
     string idpToken = (regex:split(header, " "))[1];
-    http:Client idpClient = check new("https://api.asgardeo.io/t/ravin/oauth2");
+    http:Client idpClient = check new("https://api.asgardeo.io/t/ravin/oauth2", config = {
+            httpVersion: "1.1"
+        });
     json | error res = idpClient->post("/introspect", 
     headers = ({
         "Content-Type":"application/x-www-form-urlencoded",
@@ -23,19 +24,24 @@ public isolated function verifyIDPToken(string header) returns json | error {
 
 public isolated function getUserInfoFromIDP(string header) returns json | error {
     string idpToken = (regex:split(header, " "))[1];
-    http:Client userClient = check new("https://api.asgardeo.io/t/ravin/oauth2");
+    http:Client userClient = check new("https://api.asgardeo.io/t/ravin/oauth2", config = {
+            httpVersion: "1.1"
+        });
     json | error res = userClient->get("/userinfo", headers={
         "Authorization":"Bearer "+ idpToken
     });
-    io:println(res);
     return res;
 }
 
 
 public isolated function getUserData(string userID) returns json | error{
     http:Client userClient = check new ("http://localhost:9095/userService");
-    json responseData = check userClient->get("/user/" + userID);
-    return check responseData.data;
+    json | error responseData = userClient->get("/user/" + userID);
+    
+    if responseData is json{
+        return check responseData.data;
+    }
+    return responseData;
 }
 
 public isolated function generateToken(json userData, decimal expTime) returns string | jwt:Error | error{

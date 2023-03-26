@@ -12,17 +12,13 @@ configurable string DATABASE = ?;
 service /userService on new http:Listener(9095) {
 
 
-    resource function get user/[string userID]() returns Payload | http:InternalServerError {
+    resource function get user/[string userID]() returns Payload | http:InternalServerError | http:STATUS_NOT_FOUND {
         
         do{
             data_model:User | error result = getUserData(userID);
 
             if(result is error){
-                Payload responsePayload = {
-                    message : "No User found",
-                    data : ()
-                };
-                return responsePayload;
+                return http:STATUS_NOT_FOUND;
             }
             Payload responsePayload = {
                 message : "User found",
