@@ -19,7 +19,7 @@ CREATE TABLE contest (
     moderator VARCHAR(255) NOT NULL,
     image_url VARCHAR(255),
     PRIMARY KEY (contest_id),
-    FOREIGN KEY (moderator) REFERENCES user(user_id)
+    FOREIGN KEY (moderator) REFERENCES user(user_id),
     CHECK (start_time < end_time)
 );
 
