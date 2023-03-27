@@ -39,13 +39,14 @@ type NewContest record {
     time:Civil startTime;
     @sql:Column {name: "end_time"}
     time:Civil endTime;
+    string moderator;
 };
 
 # A service representing a network-accessible API
 # bound to port `9098`.
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
         allowCredentials: false,
         allowHeaders: ["CORELATION_ID"],
         exposeHeaders: ["X-CUSTOM-HEADER", "Authorization"],
@@ -55,7 +56,7 @@ type NewContest record {
 service /contestService on new http:Listener(9098) {
     @http:ResourceConfig {
         cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
             allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }
@@ -68,7 +69,7 @@ service /contestService on new http:Listener(9098) {
 
     @http:ResourceConfig {
         cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
             allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
@@ -89,7 +90,7 @@ service /contestService on new http:Listener(9098) {
 
     @http:ResourceConfig {
         cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
             allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
@@ -107,7 +108,7 @@ service /contestService on new http:Listener(9098) {
 
     @http:ResourceConfig {
         cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
             allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }
@@ -122,7 +123,7 @@ service /contestService on new http:Listener(9098) {
                                                  description: newContest.description,
                                                  startTime: newContest.startTime,
                                                  endTime: newContest.endTime,
-                                                 moderator: "asg_usr_01"
+                                                 moderator: newContest.moderator
                                             };
         string|int|error? contestId =  addContest(newContestToAdd);
         if contestId is error {
@@ -134,7 +135,7 @@ service /contestService on new http:Listener(9098) {
 
     @http:ResourceConfig {
         cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
             allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }

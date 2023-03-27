@@ -37,7 +37,7 @@ service /challengeService on new http:Listener(9096) {
 
     @http:ResourceConfig {
         cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
             allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
@@ -47,6 +47,13 @@ service /challengeService on new http:Listener(9096) {
         return challenge;
     }
 
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
+        }
+    }
     resource function get challenges/difficulty/[string difficulty]() returns data_model:Challenge[]?|error {
         
         data_model:Challenge[]|() challengesWithDifficulty = check getChallengesWithDifficulty(difficulty);
@@ -55,7 +62,7 @@ service /challengeService on new http:Listener(9096) {
 
     @http:ResourceConfig {
         cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
             allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
@@ -73,7 +80,7 @@ service /challengeService on new http:Listener(9096) {
 
     @http:ResourceConfig {
         cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
             allowCredentials: true,
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
         }
@@ -200,7 +207,6 @@ isolated function getChallenge(string challengeId) returns data_model:Challenge|
 isolated function getChallengesWithDifficulty(string difficulty) returns data_model:Challenge[]|sql:Error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     stream<data_model:Challenge,sql:Error?> result = dbClient->query(`SELECT * FROM challenge WHERE difficulty = ${difficulty}`);
-    io:println(result);
     check dbClient.close();
 
     data_model:Challenge[]|sql:Error? listOfChallenges = from data_model:Challenge challenge in result select challenge;

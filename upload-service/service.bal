@@ -20,7 +20,7 @@ configurable string DATABASE = ?;
 # // The service-level CORS config applies globally to each `resource`.
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "http://localhost:3000"],
+        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
         allowCredentials: false,
         allowHeaders: ["CORELATION_ID"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
