@@ -73,6 +73,14 @@ CREATE TABLE submission (
 );
 /* -------------------------UPLOAD SERVICE---------------------------- */
 
+CREATE TABLE refresh_token (
+    token_id INT AUTO_INCREMENT NOT NULL,
+    user_id VARCHAR(200) NOT NULL,
+    refresh_token VARCHAR(1000) NOT NULL,
+    PRIMARY KEY (token_id),
+    FOREIGN KEY (user_id) REFERENCES user(user_id)
+);
+
 
 /* These are some dummy values to be inserted into the database at the time of creation */
 INSERT INTO user VALUES ('asg_usr_01', 'haathim', 'Haathim Munas', 'NORMAL');
