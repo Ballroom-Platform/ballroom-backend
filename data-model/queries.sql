@@ -19,7 +19,7 @@ CREATE TABLE contest (
     moderator VARCHAR(255) NOT NULL,
     image_url VARCHAR(255),
     PRIMARY KEY (contest_id),
-    FOREIGN KEY (moderator) REFERENCES user(user_id)
+    FOREIGN KEY (moderator) REFERENCES user(user_id),
     CHECK (start_time < end_time)
 );
 
@@ -79,11 +79,11 @@ INSERT INTO user VALUES ('asg_usr_01', 'haathim', 'Haathim Munas', 'NORMAL');
 INSERT INTO user VALUES ('asg_usr_02', 'ravin', 'Ravin Perera', 'NORMAL');
 INSERT INTO user VALUES ('asg_usr_03', 'john', 'John Doe', 'NORMAL');
 
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_001','Contest One',CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(), 'asg_usr_01');
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_002','Contest Two',CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(), 'asg_usr_02');
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_003','Contest Three',CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(), 'asg_usr_03');
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_004', "Contest Thousand", '2022-01-01 00:00:01', '2024-01-01 00:00:01', "asg_usr_001");
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_004', "Contest Thousand", '2024-01-01 00:00:01', '2025-01-01 00:00:01', "asg_usr_001");
+INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_001','Contest One','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
+INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_002','Contest Two','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
+INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_003','Contest Three','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
+INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_004', "Contest Thousand", '2022-01-01 00:00:01', '2024-01-02 00:00:01', "asg_usr_01");
+INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_005', "Contest Thousand", '2024-01-01 00:00:01', '2025-01-02 00:00:01', "asg_usr_01");
 
 -- INSERT INTO challenge (title, description, testcase)('Challenge 03', 'Challenge 03 Description....', FILE_READ('file.dat'));
 INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_001','Challenge 03','Challenge constraints.....', 'Challenge 03 Description....', 'EASY',x'89504E47');
