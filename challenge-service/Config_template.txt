@@ -1,0 +1,5 @@
+USER="enter username here"
+PASSWORD="enter password here"
+HOST="enter host here"
+PORT="enter port as an integer here"
+DATABASE="ballroom"
