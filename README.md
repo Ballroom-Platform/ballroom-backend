@@ -15,11 +15,11 @@ After cloning the repository, switch to "m2" branch and follow the steps provide
 
 3.) Download and install mysql in your local environment.
 
-4.) Create a database called "Ballroom" and add the necessary tables using the sql queries provided in the "queries.sql" file located in the data-model package directory.
+4.) Create a database called "ballroom" and add the necessary tables using the sql queries provided in the "queries.sql" file located in the data-model package directory.
 
 > Note: You will have to manually copy paste the queries to create the required tables. 
 
-5.) Create Config.toml files in every service and provided the details mentioned in Config-template.txt files provided within each service.
+5.) Create Config.toml files in every service and provided the details mentioned in Config_template.txt files provided within each service.
 
 6.) Create a folder called "certificates" within the sts-service. Then create a subfolder called "jwt" within the "certificates" folder. Add your certificate and key file needed for JWT validation within this subfolder.
 
