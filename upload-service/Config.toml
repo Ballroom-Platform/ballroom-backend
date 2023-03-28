@@ -1,5 +1,0 @@
-USER="root"
-PASSWORD="password149#P"
-HOST="localhost"
-PORT=3306
-DATABASE="ballroom_v2"
