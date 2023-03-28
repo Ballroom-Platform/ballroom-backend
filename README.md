@@ -2,7 +2,7 @@
 
 ## Setup
 
-After cloning the repository, follow the steps provided below to setup the project.
+After cloning the repository, switch to "m2" branch and follow the steps provided below to setup the project.
 
 1.) First push the data model to the local repository by executing the pushtorepo.sh file in data model package directory using the following command, 
 `./pushtorepo`
