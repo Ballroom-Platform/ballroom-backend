@@ -11,4 +11,6 @@ if permissions are not given then give permissions by
 then run the rabbitmq message broker using docker
 `docker run --name rabbitmq -p 5672:5672 rabbitmq`
 
+then run `bal run` in the rabbitmq package directory in order to declare the neccary queues
+
 then start each individual service by going to each package directory and execute `bal run`
