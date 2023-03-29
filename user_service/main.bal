@@ -24,3 +24,29 @@ isolated function createUser(data_model:User user) returns error? {
 
     _ = check dbClient.close();
 }
+
+function getUsersByRole(string role) returns data_model:User[]|sql:Error?{
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    stream<data_model:User,sql:Error?> result = dbClient->query(`SELECT * FROM user WHERE role = ${role}`);
+    check dbClient.close();
+
+    data_model:User[]|sql:Error? listOfUsers = from data_model:User user in result select user;
+    return listOfUsers;
+}
+
+isolated function updateUserRole(string userId, string role) returns error?{
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+
+    // check if role is valid
+    if role != "admin" && role != "contestant" {
+        return error("INVALID ROLE.");
+    }
+    sql:ExecutionResult execRes = check dbClient->execute(`
+        UPDATE user SET role = ${role} WHERE user_id = ${userId};
+    `);
+    if execRes.affectedRowCount == 0 {
+        return error("INVALID USER_ID.");
+    }
+    check dbClient.close();
+    return;
+}
