@@ -174,6 +174,13 @@ service /contestService on new http:Listener(9098) {
         return "DELETE SUCCESSFULL";
     }
 
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
+        }
+    }
     resource function delete contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
         string|int|error? result =  deleteChallengeFromContest(contestId, challengeId);
         if result is error {
