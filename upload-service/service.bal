@@ -22,7 +22,7 @@ configurable string DATABASE = ?;
     cors: {
         allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
         allowCredentials: false,
-        allowHeaders: ["CORELATION_ID"],
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
@@ -42,6 +42,13 @@ service / on new http:Listener(9094) {
     # A resource for uploading solutions to challenges
     # + request - the input solution file as a multipart request with userId, challengeId & the solution as a zip file
     # + return - response message from server
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
+        }
+    }
     resource function post uploadSolution(http:Request request, http:Caller caller) returns error? {
         io:println("ENT");
         string generatedSubmissionId = uuid:createType1AsString();
@@ -56,7 +63,7 @@ service / on new http:Listener(9094) {
         data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: "", submissionId: ""};
 
         foreach mime:Entity item in bodyParts {
-
+            io:println(item.getContentType());
             // check if the body part is a zipped file or normal text
             if item.getContentType().length() == 0  {
                 string contentDispositionString = item.getContentDisposition().toString();
@@ -94,6 +101,7 @@ service / on new http:Listener(9094) {
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
                 subMsg.submissionId = generatedSubmissionId;
+                io:println(subMsg);
                 check addSubmission(subMsg, fileReadBytes);
                 check streamer.close();
             }
