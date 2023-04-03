@@ -2,12 +2,24 @@ import ballerinax/rabbitmq;
 import wso2/data_model;
 import ballerina/http;
 import ballerina/sql;
+import ballerina/time;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
 configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
+
+
+public type Submission record{
+    readonly string submission_id;
+    string user_id;
+    string contest_id;
+    string challenge_id;
+    time:Civil submitted_time;
+    float? score;
+};
+
 
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener= new(rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
@@ -75,5 +87,46 @@ service /score on new http:Listener(9092) {
             return http:INTERNAL_SERVER_ERROR;
         }
         
+    }
+
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
+        }
+    }
+    isolated resource function get submissionList(string userId, string contestId, string challengeId) returns http:InternalServerError|Payload { 
+
+        do{
+            Submission[] list = check getSubmissionList(userId, contestId, challengeId) ?: [];
+
+            Payload responsePayload = {
+                message : "Submission found",
+                data : list
+            };
+
+            return responsePayload;
+        }on fail {
+            return http:INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
+        }
+    }
+    isolated resource function get submissionFile/[string submissionId]() returns http:InternalServerError|byte[] { 
+
+        do{
+            byte[] file = check getSubmissionFile(submissionId);
+
+            return file;
+        }on fail {
+            return http:INTERNAL_SERVER_ERROR;
+        }
     }
 }
