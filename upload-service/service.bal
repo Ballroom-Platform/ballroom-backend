@@ -83,14 +83,6 @@ service / on new http:Listener(9094) {
 
                 byte[] & readonly fileReadBytes = check io:fileReadBytes("/tmp/"+fileName+".zip");
 
-
-                // string base64EncodedString = check convertByteArrayStreamToString(streamer);
-                
-
-                // string _ = check redisConn->set(fileName, base64EncodedString);
-                // redisConn.stop();
-                
-                // subMsg.fileLocation = "./files/"  + fileName + ".zip";
                 subMsg.fileName = fileName;
                 subMsg.fileExtension = ".zip";
                 subMsg.submissionId = generatedSubmissionId;
