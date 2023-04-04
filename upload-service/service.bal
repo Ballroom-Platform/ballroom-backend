@@ -29,8 +29,6 @@ configurable string DATABASE = ?;
 }
 service / on new http:Listener(9094) {
 
-
-
     private final rabbitmq:Client rabbitmqClient;
 
     function init() returns error? {
