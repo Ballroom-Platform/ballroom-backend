@@ -68,6 +68,33 @@ service /userService on new http:Listener(9095) {
         
     }
 
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
+        }
+    }
+    resource function get user/[string userId]/role () returns Payload | http:InternalServerError | http:STATUS_NOT_FOUND {
+        
+        do{
+
+            string role = check getUserRole(userId);
+            Payload payload = {
+                message: "Role found",
+                data: {
+                    "role" : role
+                }
+            };
+            return payload;
+
+        }
+        on fail{
+            return http:STATUS_NOT_FOUND;
+        }
+        
+    }
+
 
     resource function post user(@http:Payload data_model:User user) returns Payload | http:InternalServerError {
         

@@ -4,7 +4,7 @@ import ballerina/sql;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 public type Payload record {
     string message;
-    data_model:User? data;
+    anydata data;
 };
 
 
@@ -49,4 +49,13 @@ isolated function updateUserRole(string userId, string role) returns error?{
     }
     check dbClient.close();
     return;
+}
+
+isolated function getUserRole(string userId) returns string | error {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+
+    string role = check dbClient->queryRow(`SELECT role from user WHERE user_id = ${userId};`);
+    _ = check dbClient.close();
+
+    return role;
 }
