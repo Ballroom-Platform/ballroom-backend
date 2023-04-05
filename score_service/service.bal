@@ -20,6 +20,12 @@ public type Submission record{
     float? score;
 };
 
+public type LeaderboardRow record{
+    string userId;
+    string? name;
+    float score;  
+};
+
 
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener= new(rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
@@ -125,6 +131,29 @@ service /score on new http:Listener(9092) {
             byte[] file = check getSubmissionFile(submissionId);
 
             return file;
+        }on fail {
+            return http:INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
+        }
+    }
+    isolated resource function get leaderboard/[string contestId]() returns http:InternalServerError| Payload { 
+
+        do{
+            LeaderboardRow[] result = check getLeaderboard(contestId) ?: [];
+
+            Payload responsePayload = {
+                message : "Leaderboard created",
+                data : result
+            };
+
+            return responsePayload;
         }on fail {
             return http:INTERNAL_SERVER_ERROR;
         }
