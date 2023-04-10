@@ -104,7 +104,7 @@ service /challengeService on new http:Listener(9096) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
         }
     }
-    resource function post challenge(http:Request request) returns string|int|error? {
+    resource function post challenges(http:Request request) returns string|int|error? {
         mime:Entity[] bodyParts = check request.getBodyParts();
         io:println(request.getContentType());
 
@@ -156,7 +156,7 @@ service /challengeService on new http:Listener(9096) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
         }
     }
-    resource function put challenge/[string challengeId](http:Request request) returns UpdatedChallenge|string|http:InternalServerError|http:STATUS_NOT_FOUND|error {
+    resource function put challenges/[string challengeId](http:Request request) returns UpdatedChallenge|string|http:InternalServerError|http:STATUS_NOT_FOUND|error {
 
         json jsonPayload = check request.getJsonPayload();
         UpdatedChallenge updatedChallenge = check jsonPayload.cloneWithType(UpdatedChallenge);
@@ -171,7 +171,7 @@ service /challengeService on new http:Listener(9096) {
         return updatedChallenge;
     }
 
-    resource function delete challenge/[string challengeId]() returns http:InternalServerError|http:STATUS_NOT_FOUND|http:STATUS_OK {
+    resource function delete challenges/[string challengeId]() returns http:InternalServerError|http:STATUS_NOT_FOUND|http:STATUS_OK {
         error? challenge = deleteChallenge(challengeId);
         if challenge is error {
             if challenge is sql:Error {
