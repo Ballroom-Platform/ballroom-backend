@@ -149,7 +149,7 @@ service /contestService on new http:Listener(9098) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }
     }
-    resource function post contests/[string contestId]/challenge/[string challengeId] () returns string|int?|http:InternalServerError {
+    resource function post contests/[string contestId]/challenges/[string challengeId] () returns string|int?|http:InternalServerError {
         string|int|sql:Error? challengeToContest = addChallengeToContest(contestId, challengeId);
         
         if challengeToContest is sql:Error {
@@ -206,7 +206,7 @@ service /contestService on new http:Listener(9098) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }
     }
-    resource function delete contests/[string contestId]/challenge/[string challengeId] () returns http:InternalServerError|http:STATUS_NOT_FOUND| http:STATUS_OK{
+    resource function delete contests/[string contestId]/challenges/[string challengeId] () returns http:InternalServerError|http:STATUS_NOT_FOUND| http:STATUS_OK{
         string|int?|sql:Error challengeFromContest = deleteChallengeFromContest(contestId, challengeId);
         
         if challengeFromContest is sql:Error {
