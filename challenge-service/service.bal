@@ -149,6 +149,13 @@ service /challengeService on new http:Listener(9096) {
 
     }
 
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
+        }
+    }
     resource function put challenge/[string challengeId](http:Request request) returns UpdatedChallenge|string|http:InternalServerError|http:STATUS_NOT_FOUND|error {
 
         json jsonPayload = check request.getJsonPayload();
