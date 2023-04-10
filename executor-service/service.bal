@@ -5,16 +5,13 @@ import wso2/data_model;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 import ballerina/regex;
-
+import executor_service.utils as utils;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
 configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
-
-
-// const SCORE_OUTPUT_FILEPATH = "";
 
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener= new(rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
@@ -131,35 +128,10 @@ function getAndStoreFile(string fileName, string fileExtension, string submissio
     if(!dirExists){
         check file:createDir(basePath, file:RECURSIVE);
     }
-    //check file:copy("../upload-service/files/" + fileLocation,  "../storedFiles/" + fileLocation, file:REPLACE_EXISTING);
-
-    // The Redis Configuration
-    // redis:ConnectionConfig redisConfig = {
-    //         host: "127.0.0.1:6379",
-    //         password: "",
-    //         options: {
-    //             connectionPooling: true,
-    //             isClusterConnection: false,
-    //             ssl: false,
-    //             startTls: false,
-    //             verifyPeer: false,
-    //             connectionTimeout: 500
-    //         }
-    //     };
-
-    // redis:Client redisConn = check new (redisConfig);
-    // string? redisString = check redisConn->get(redisKey);
-    // redisConn.stop();
-    // if (redisString is ()) {
-    //     return error("Submission missing in datastore.");
-    // }
-    // byte[] byteArray = string:toBytes(redisString);
-    // byte[] byteStream = <byte[]>(check mime:base64Decode(byteArray));
 
     byte[] fileFromDB = check getFileFromDB(submissionId);
 
     check io:fileWriteBytes(basePath + "/" + fileLocation, fileFromDB);
-
 
     return basePath + "/" + fileName + "/";
 }
@@ -185,15 +157,15 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
     });
     _ = newArgs.pop();
 
-    ProcessBuilder builder = check newProcessBuilder2(newArgs);
+    utils:ProcessBuilder builder = check utils:newProcessBuilder2(newArgs);
     if workdingDir is string {
-        builder = builder.directory2(newFile2(workdingDir));
+        builder = builder.directory2(utils:newFile2(workdingDir));
     }
     _ = builder.redirectErrorStream2(true);
 
-    Process p = check builder.start();
-    BufferedReader r = newBufferedReader1(newInputStreamReader1(p.getInputStream()));
-    string?|IOException line;
+    utils:Process p = check builder.start();
+    utils:BufferedReader r = utils:newBufferedReader1(utils:newInputStreamReader1(p.getInputStream()));
+    string?|utils:IOException line;
     string[] output = [];
     while (true) {
         line = check r.readLine();

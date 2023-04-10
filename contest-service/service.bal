@@ -5,12 +5,6 @@ import ballerina/sql;
 import ballerinax/mysql.driver as _;
 import ballerina/time;
 import ballerina/uuid;
-import ballerina/io;
-// import ballerina/io;
-// import ballerina/io;
-// import ballerina/mime;
-// import ballerina/file;
-// import ballerina/regex;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -54,6 +48,7 @@ type NewContest record {
     }
 }
 service /contestService on new http:Listener(9098) {
+
     @http:ResourceConfig {
         cors: {
             allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
@@ -61,9 +56,17 @@ service /contestService on new http:Listener(9098) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }
     }
-    resource function get contest/[string contestId]() returns data_model:Contest|error? {
-        
-        data_model:Contest contest = check getContest(contestId);
+    resource function get contests/[string contestId]() returns data_model:Contest| http:InternalServerError|http:STATUS_NOT_FOUND {
+
+        data_model:Contest|sql:Error contest = getContest(contestId);
+
+        if contest is sql:Error {
+            if contest is sql:NoRowsError {
+                return http:STATUS_NOT_FOUND;
+            }
+            return http:INTERNAL_SERVER_ERROR;
+        }
+
         return contest;
     }
 
@@ -74,18 +77,20 @@ service /contestService on new http:Listener(9098) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
     }
-
-    resource function get contests/[string status]() returns data_model:Contest[]|error? {
+    resource function get contests/status/[string status]() returns data_model:Contest[]|http:InternalServerError|http:STATUS_NOT_FOUND {
         
-        data_model:Contest[]|error? listOfContests = getContestsWithStatus(status);
-        if listOfContests is error {
-            if listOfContests.message().equalsIgnoreCaseAscii("INVALID STATUS!!") {
-                return listOfContests;
-            }
-            // return error("ERROR OCCURED");
-            return listOfContests;
+        data_model:Contest[]|sql:Error|error? contestsWithStatus = getContestsWithStatus(status);
+        if contestsWithStatus is data_model:Contest[] {
+            return contestsWithStatus;
+
+        } else if contestsWithStatus is sql:Error? {
+            return http:INTERNAL_SERVER_ERROR;
+
+        } else if contestsWithStatus is error {
+            return http:STATUS_NOT_FOUND;
         }
-        return listOfContests;
+
+
     }
 
     @http:ResourceConfig {
@@ -95,15 +100,18 @@ service /contestService on new http:Listener(9098) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
     }
-
-    resource function get contest/[string contestId]/challenges () returns error|string[]|sql:Error? {
-        error|string[]|sql:Error? contestChallenges = getContestChallenges(contestId);
-        if !(contestChallenges is string[]) {
-            return error("DATABASE ERROR");
-            // return contestChallenges;
+    resource function get contests/[string contestId]/challenges () returns string[]|http:InternalServerError {
+        string[]|sql:Error? contestChallenges = getContestChallenges(contestId);
+        if contestChallenges is string[] {
+            return contestChallenges;
+        } else if contestChallenges is sql:Error {
+            return http:INTERNAL_SERVER_ERROR;
+        } else {
+            // FIXME
+            return http:INTERNAL_SERVER_ERROR;
         }
 
-        return contestChallenges;
+
     }
 
     @http:ResourceConfig {
@@ -113,10 +121,8 @@ service /contestService on new http:Listener(9098) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }
     }
-    resource function post contest (@http:Payload NewContest newContest) returns string|int|error?{
-        io:println("REQUEST RECIEVED");
+    resource function post contests (@http:Payload NewContest newContest) returns string|int?|http:InternalServerError{
         string generatedContestId = "contest_" + uuid:createType1AsString();
-        // data_model:Contest newContestToAdd = {...newContest, moderator: "", contestId: generatedContestId   };
         data_model:Contest newContestToAdd = {
                                                  contestId : generatedContestId,
                                                  title: newContest.title,
@@ -125,12 +131,15 @@ service /contestService on new http:Listener(9098) {
                                                  endTime: newContest.endTime,
                                                  moderator: newContest.moderator
                                             };
-        string|int|error? contestId =  addContest(newContestToAdd);
-        if contestId is error {
-            return error("ERROR OCCURED, COULD NOT INSERT CONTEST");
-            // return contestId;
+
+        string|int|sql:Error? contest = addContest(newContestToAdd);
+
+        if contest is sql:Error {
+            return http:INTERNAL_SERVER_ERROR;
         }
-        return contestId;
+
+        return contest;
+
     }
 
     @http:ResourceConfig {
@@ -140,38 +149,54 @@ service /contestService on new http:Listener(9098) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }
     }
-    resource function post contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
-        string|int|error? result =  addChallengeToContest(contestId, challengeId);
-        if result is error {
-            return error("ERROR OCCURED, COULD NOT INSERT CHALLENGE TO CONTEST");
+    resource function post contests/[string contestId]/challenge/[string challengeId] () returns string|int?|http:InternalServerError {
+        string|int|sql:Error? challengeToContest = addChallengeToContest(contestId, challengeId);
+        
+        if challengeToContest is sql:Error {
+            return http:INTERNAL_SERVER_ERROR;
         }
-        return result;
+
+        return challengeToContest;
+
     }
 
-
-    resource function put contest/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|error {
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
+        }
+    }
+    resource function put contests/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|http:InternalServerError|http:STATUS_NOT_FOUND {
         error? updatedContest = updateContest(contestId, toBeUpdatedContest);
         if updatedContest is error {
-            if updatedContest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID.") {
-                return updatedContest;
+            if updatedContest is sql:Error {
+                return http:INTERNAL_SERVER_ERROR;
             }
-            return error("DATABASE ERROR!");
+            return http:STATUS_NOT_FOUND;
         }
         toBeUpdatedContest["contestId"] = contestId;
         return toBeUpdatedContest;
     }
 
-    resource function delete contest/[string contestId]() returns string|error {
+    @http:ResourceConfig {
+        cors: {
+            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+            allowCredentials: true,
+            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
+        }
+    }
+    resource function delete contests/[string contestId]() returns http:InternalServerError|http:STATUS_NOT_FOUND| http:STATUS_OK {
         error? contest = deleteContest(contestId);
         if contest is error {
-            if contest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID OR CONTEST IS ONGOING OR ENDED.") {
-                return contest;
+            if contest is sql:Error {
+                return http:INTERNAL_SERVER_ERROR;
             }
-            return error("DATABASE ERROR");
-            // return contest;
+            return http:STATUS_NOT_FOUND;
         }
 
-        return "DELETE SUCCESSFULL";
+        return http:STATUS_OK;
+
     }
 
     @http:ResourceConfig {
@@ -181,17 +206,19 @@ service /contestService on new http:Listener(9098) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
         }
     }
-    resource function delete contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
-        string|int|error? result =  deleteChallengeFromContest(contestId, challengeId);
-        if result is error {
-            return result;
-            // return error("ERROR OCCURED, COULD NOT DELETE CHALLENGE FROM CONTEST");
+    resource function delete contests/[string contestId]/challenge/[string challengeId] () returns http:InternalServerError|http:STATUS_NOT_FOUND| http:STATUS_OK{
+        string|int?|sql:Error challengeFromContest = deleteChallengeFromContest(contestId, challengeId);
+        
+        if challengeFromContest is sql:Error {
+            return http:INTERNAL_SERVER_ERROR;
         }
-        return "DELETE SUCCESSFULL";
+
+        return http:STATUS_OK;
+
     }
 }
 
-function addChallengeToContest(string contestId, string challengeId) returns string|int|error? {
+function addChallengeToContest(string contestId, string challengeId) returns string|int|sql:Error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
 
     sql:ExecutionResult execRes = check dbClient->execute(`
@@ -201,7 +228,7 @@ function addChallengeToContest(string contestId, string challengeId) returns str
     return execRes.lastInsertId;
 }
 
-function deleteChallengeFromContest(string contestId, string challengeId) returns string|int|error? {
+function deleteChallengeFromContest(string contestId, string challengeId) returns string|int?|sql:Error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     sql:ExecutionResult execRes = check dbClient->execute(`
         DELETE FROM contest_challenge WHERE contest_id = ${contestId} AND challenge_id = ${challengeId};
@@ -222,7 +249,7 @@ function deleteContest(string contestId) returns error? {
     return;
 }
 
-function getContestChallenges(string contestId) returns error|string[]|sql:Error? {
+function getContestChallenges(string contestId) returns string[]|sql:Error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     
     stream<ChallengeId,sql:Error?> result = dbClient->query(`SELECT challenge_id FROM contest_challenge WHERE contest_id = ${contestId};`);
@@ -265,8 +292,9 @@ function getContestsWithStatus(string status) returns data_model:Contest[]|sql:E
     return listOfContests;
 }
 
-function addContest(data_model:Contest newContest) returns string|int?|error{
+function addContest(data_model:Contest newContest) returns string|int|sql:Error? {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+
     string generatedContestId = "contest-" + uuid:createType1AsString();
 
     sql:ExecutionResult execRes = check dbClient->execute(`
@@ -276,7 +304,7 @@ function addContest(data_model:Contest newContest) returns string|int?|error{
     return execRes.lastInsertId;
 }
 
-function getContest(string contestId) returns data_model:Contest|sql:Error|error {
+function getContest(string contestId) returns data_model:Contest|sql:Error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     data_model:Contest|sql:Error result = dbClient->queryRow(`SELECT * FROM contest WHERE contest_id = ${contestId}`);
     check dbClient.close();

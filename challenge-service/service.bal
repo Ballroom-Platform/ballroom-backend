@@ -5,7 +5,6 @@ import ballerina/sql;
 import ballerinax/mysql.driver as _;
 import ballerina/io;
 import ballerina/mime;
-// import ballerina/file;
 import ballerina/regex;
 import ballerina/uuid;
 
@@ -42,8 +41,14 @@ service /challengeService on new http:Listener(9096) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
     }
-    resource function get challenge/[string challengeId]() returns data_model:Challenge|error? {
-        data_model:Challenge challenge = check getChallenge(challengeId);
+    resource function get challenges/[string challengeId]() returns data_model:Challenge|http:STATUS_NOT_FOUND|http:InternalServerError {
+        data_model:Challenge|sql:Error challenge = getChallenge(challengeId);
+        if challenge is sql:Error {
+            if challenge is sql:NoRowsError {
+                return http:STATUS_NOT_FOUND;
+            }
+            return http:INTERNAL_SERVER_ERROR;
+        }
         return challenge;
     }
 
@@ -54,10 +59,23 @@ service /challengeService on new http:Listener(9096) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
     }
-    resource function get challenges/difficulty/[string difficulty]() returns data_model:Challenge[]?|error {
+    resource function get challenges/difficulty/[string difficulty]() returns string|data_model:Challenge[]|http:InternalServerError|http:STATUS_NOT_FOUND {
+
+        if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
+           return http:STATUS_NOT_FOUND;
+        }
         
-        data_model:Challenge[]|() challengesWithDifficulty = check getChallengesWithDifficulty(difficulty);
-        return challengesWithDifficulty;
+        data_model:Challenge[]|sql:Error? challengesWithDifficulty = getChallengesWithDifficulty(difficulty);
+        if challengesWithDifficulty is data_model:Challenge[] {
+            return challengesWithDifficulty;
+        } else if challengesWithDifficulty is sql:Error {
+            return http:INTERNAL_SERVER_ERROR;
+        } else {
+            // FIX_ME (Can't find a way to handle this error)
+            // DON'T KNOW FOR WHAT SITUATION NIL IS RETURNED
+            return http:INTERNAL_SERVER_ERROR;
+        }
+
     }
 
     @http:ResourceConfig {
@@ -67,14 +85,15 @@ service /challengeService on new http:Listener(9096) {
             allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
         }
     }
-    resource function get challenges/template/[string challengeId] () returns byte[]|error{
-        final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-
-        byte[] testCaseFileBlob = check dbClient->queryRow(
-            `SELECT challenge_template FROM challenge WHERE challenge_id = ${challengeId}`
-        );
-        check dbClient.close();
-        return testCaseFileBlob;
+    resource function get challenges/template/[string challengeId] () returns byte[]|http:STATUS_NOT_FOUND|http:InternalServerError{
+        byte[]|sql:Error template = getTemplate(challengeId);
+        if template is sql:Error {
+            if template is sql:NoRowsError {
+                return http:STATUS_NOT_FOUND;
+            }
+            return http:INTERNAL_SERVER_ERROR;
+        }
+        return template;
     }
 
 
@@ -86,7 +105,6 @@ service /challengeService on new http:Listener(9096) {
         }
     }
     resource function post challenge(http:Request request) returns string|int|error? {
-        io:println("RECVD REQ");
         mime:Entity[] bodyParts = check request.getBodyParts();
         io:println(request.getContentType());
 
@@ -120,7 +138,6 @@ service /challengeService on new http:Listener(9096) {
                 }
                 
                 check streamer.close();
-                io:println("------");
             }
 
         }
@@ -132,31 +149,32 @@ service /challengeService on new http:Listener(9096) {
 
     }
 
-    resource function put challenge/[string challengeId](http:Request request) returns UpdatedChallenge|string|error {
+    resource function put challenge/[string challengeId](http:Request request) returns UpdatedChallenge|string|http:InternalServerError|http:STATUS_NOT_FOUND|error {
 
         json jsonPayload = check request.getJsonPayload();
         UpdatedChallenge updatedChallenge = check jsonPayload.cloneWithType(UpdatedChallenge);
         error? challenge = updateChallenge(challengeId, updatedChallenge);
         if challenge is error {
-            if challenge.message().equalsIgnoreCaseAscii("INVALID CHALLENGE_ID.") {
-                return "INVALID CHALLENGE_ID.";
+            if challenge is sql:Error {
+                return http:INTERNAL_SERVER_ERROR;
             }
-            return "DATABASE ERROR!";
+            return http:STATUS_NOT_FOUND;
         }
         updatedChallenge["challengeId"] = challengeId;
         return updatedChallenge;
     }
 
-    resource function delete challenge/[string challengeId]() returns string {
+    resource function delete challenge/[string challengeId]() returns http:InternalServerError|http:STATUS_NOT_FOUND|http:STATUS_OK {
         error? challenge = deleteChallenge(challengeId);
         if challenge is error {
-            if challenge.message().equalsIgnoreCaseAscii("INVALID CHALLENGE_ID.") {
-                return "INVALID CHALLENGE_ID.";
+            if challenge is sql:Error {
+                return http:INTERNAL_SERVER_ERROR;
             }
-            return "DATABASE ERROR!";
+            return http:STATUS_NOT_FOUND;
         }
 
-        return "DELETE SUCCESSFULL";
+        return http:STATUS_OK;
+
     }
 
 }
@@ -212,5 +230,13 @@ isolated function getChallengesWithDifficulty(string difficulty) returns data_mo
     data_model:Challenge[]|sql:Error? listOfChallenges = from data_model:Challenge challenge in result select challenge;
 
     return listOfChallenges;
+
+}
+
+isolated function getTemplate(string challengeId) returns byte[]|sql:Error {
+    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    byte[]|sql:Error result = dbClient->queryRow(`SELECT challenge_template FROM challenge WHERE challenge_id = ${challengeId}`);
+    check dbClient.close();
+    return result;
 
 }
