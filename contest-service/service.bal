@@ -1,16 +1,12 @@
 import ballerina/http;
-import wso2/data_model;
+import ballroom/data_model;
 import ballerinax/mysql;
 import ballerina/sql;
 import ballerinax/mysql.driver as _;
 import ballerina/time;
 import ballerina/uuid;
 import ballerina/io;
-// import ballerina/io;
-// import ballerina/io;
-// import ballerina/mime;
-// import ballerina/file;
-// import ballerina/regex;
+import ballerina/log;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -54,6 +50,11 @@ type NewContest record {
     }
 }
 service /contestService on new http:Listener(9098) {
+        
+    function init() {
+        log:printInfo("Contest service started...");
+    }
+
     @http:ResourceConfig {
         cors: {
             allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
