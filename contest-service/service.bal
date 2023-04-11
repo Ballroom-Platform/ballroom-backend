@@ -1,5 +1,5 @@
 import ballerina/http;
-import ballroom/data_model;
+import contest_service.data_model;
 import ballerinax/mysql;
 import ballerina/sql;
 import ballerinax/mysql.driver as _;
@@ -37,6 +37,8 @@ type NewContest record {
     time:Civil endTime;
     string moderator;
 };
+
+final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
 
 # A service representing a network-accessible API
 # bound to port `9098`.
@@ -77,7 +79,7 @@ service /contestService on new http:Listener(9098) {
     }
 
     resource function get contests/[string status]() returns data_model:Contest[]|error? {
-        
+        log:printInfo("get contests by status invoked", status=status);
         data_model:Contest[]|error? listOfContests = getContestsWithStatus(status);
         if listOfContests is error {
             if listOfContests.message().equalsIgnoreCaseAscii("INVALID STATUS!!") {
@@ -278,7 +280,6 @@ function addContest(data_model:Contest newContest) returns string|int?|error{
 }
 
 function getContest(string contestId) returns data_model:Contest|sql:Error|error {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     data_model:Contest|sql:Error result = dbClient->queryRow(`SELECT * FROM contest WHERE contest_id = ${contestId}`);
     check dbClient.close();
     return result;
