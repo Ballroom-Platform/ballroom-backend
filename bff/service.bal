@@ -30,7 +30,7 @@ public type Contest record {
         maxAge: 84900
     }
 }
-service / on new http:Listener(9099) {
+service /web on new http:Listener(9099) {
     private final http:Client contestService;
 
     function init() returns error? {
