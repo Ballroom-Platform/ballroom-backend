@@ -38,16 +38,16 @@ service /web on new http:Listener(9099) {
         log:printInfo("BFF service started...1");
     }
 
-    resource function get contests/[string status]() returns Contest[]|error {
-        log:printInfo("Invoking GET contests by status...");
-        return check self.contestService->/contests/[status];
-    }
-
-    // resource function get contestService/[string... paths](http:Request req) returns http:Response|error {
-    //     log:printInfo("Invoking GET contest service...");
-    //     // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-    //     return self.contestService->forward(req.rawPath, req);
+    // resource function get contests/[string status]() returns Contest[]|error {
+    //     log:printInfo("Invoking GET contests by status...");
+    //     return check self.contestService->/contests/[status];
     // }
+
+    resource function 'default contestService/[string... paths](http:Request req) returns http:Response|error {
+        log:printInfo("Invoking GET contest service...");
+        // return self.contestService->forward("/" + string:'join("/", ...paths), req);
+        return self.contestService->forward(req.rawPath, req);
+    }
 
     // resource function post contestService/[string... paths](http:Request req) returns http:Response|error {
     //     log:printInfo("Invoking GET contest service...");
