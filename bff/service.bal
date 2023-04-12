@@ -1,7 +1,17 @@
 import ballerina/http;
 import ballerina/log;
+import ballerina/time;
 
 configurable string contestServiceUrl = ?;
+
+public type Contest record {
+    string contestId;
+    string title;
+    string? description;
+    time:Civil startTime;
+    time:Civil endTime;
+    string moderator;
+};
 
 // http:JwtValidatorConfig config = {
 //     issuer: "ballroomSTS",
@@ -28,27 +38,32 @@ service / on new http:Listener(9099) {
         log:printInfo("BFF service started...1");
     }
 
-    resource function get contestService/[string... paths](http:Request req) returns http:Response|error {
-        log:printInfo("Invoking GET contest service...");
-        // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-        return self.contestService->forward(req.rawPath, req);
+    resource function get contests/[string status]() returns Contest[]|error {
+        log:printInfo("Invoking GET contests by status...");
+        return check self.contestService->/contests/[status];
     }
 
-    resource function post contestService/[string... paths](http:Request req) returns http:Response|error {
-        log:printInfo("Invoking GET contest service...");
-        // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-        return self.contestService->forward(req.rawPath, req);
-    }
+    // resource function get contestService/[string... paths](http:Request req) returns http:Response|error {
+    //     log:printInfo("Invoking GET contest service...");
+    //     // return self.contestService->forward("/" + string:'join("/", ...paths), req);
+    //     return self.contestService->forward(req.rawPath, req);
+    // }
 
-    resource function put contestService/[string... paths](http:Request req) returns http:Response|error {
-        log:printInfo("Invoking GET contest service...");
-        // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-        return self.contestService->forward(req.rawPath, req);
-    }
+    // resource function post contestService/[string... paths](http:Request req) returns http:Response|error {
+    //     log:printInfo("Invoking GET contest service...");
+    //     // return self.contestService->forward("/" + string:'join("/", ...paths), req);
+    //     return self.contestService->forward(req.rawPath, req);
+    // }
 
-    resource function delete contestService/[string... paths](http:Request req) returns http:Response|error {
-        log:printInfo("Invoking GET contest service...");
-        // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-        return self.contestService->forward(req.rawPath, req);
-    }
+    // resource function put contestService/[string... paths](http:Request req) returns http:Response|error {
+    //     log:printInfo("Invoking GET contest service...");
+    //     // return self.contestService->forward("/" + string:'join("/", ...paths), req);
+    //     return self.contestService->forward(req.rawPath, req);
+    // }
+
+    // resource function delete contestService/[string... paths](http:Request req) returns http:Response|error {
+    //     log:printInfo("Invoking GET contest service...");
+    //     // return self.contestService->forward("/" + string:'join("/", ...paths), req);
+    //     return self.contestService->forward(req.rawPath, req);
+    // }
 }
