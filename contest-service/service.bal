@@ -45,9 +45,9 @@ final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD,
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-        allowCredentials: false,
-        allowHeaders: ["CORELATION_ID"],
-        exposeHeaders: ["X-CUSTOM-HEADER", "Authorization"],
+        allowCredentials: true,
+        allowHeaders: ["CORELATION_ID", "Authorization"],
+        exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
 }
@@ -57,25 +57,11 @@ service /contestService on new http:Listener(9098) {
         log:printInfo("Contest service started...");
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
-        }
-    }
+
     resource function get contest/[string contestId]() returns data_model:Contest|error? {
         
         data_model:Contest contest = check getContest(contestId);
         return contest;
-    }
-
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
-        }
     }
 
     resource function get contests/[string status]() returns data_model:Contest[]|error? {
@@ -91,14 +77,6 @@ service /contestService on new http:Listener(9098) {
         return listOfContests;
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
-        }
-    }
-
     resource function get contest/[string contestId]/challenges () returns error|string[]|sql:Error? {
         error|string[]|sql:Error? contestChallenges = getContestChallenges(contestId);
         if !(contestChallenges is string[]) {
@@ -109,13 +87,6 @@ service /contestService on new http:Listener(9098) {
         return contestChallenges;
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
-        }
-    }
     resource function post contest (@http:Payload NewContest newContest) returns string|int|error?{
         io:println("REQUEST RECIEVED");
         string generatedContestId = "contest_" + uuid:createType1AsString();
@@ -136,13 +107,6 @@ service /contestService on new http:Listener(9098) {
         return contestId;
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
-        }
-    }
     resource function post contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
         string|int|error? result =  addChallengeToContest(contestId, challengeId);
         if result is error {
@@ -177,13 +141,6 @@ service /contestService on new http:Listener(9098) {
         return "DELETE SUCCESSFULL";
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-type"]
-        }
-    }
     resource function delete contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
         string|int|error? result =  deleteChallengeFromContest(contestId, challengeId);
         if result is error {
