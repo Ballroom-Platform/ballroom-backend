@@ -53,9 +53,13 @@ service /web on new http:Listener(9099) {
         return check self.contestService->/contest/[contestId]/challenges;
     }
 
-    // resource function post contests/[string... paths](http:Request req) returns http:Response|error {
-    //     return self.contestService->forward(req.rawPath, req);
-    // }
+    @http:ResourceConfig {
+        consumes: ["application/json"],
+        produces: ["application/json"]
+    }
+    resource function post contests/[string... paths](http:Request req) returns http:Response|error {
+        return self.contestService->forward(req.rawPath, req);
+    }
 
 
     // resource function post contestService/[string... paths](http:Request req) returns http:Response|error {
