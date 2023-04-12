@@ -63,7 +63,6 @@ service /web on new http:Listener(9099) {
     }
 
     @http:ResourceConfig {
-        consumes: ["application/json"],
         produces: ["application/json"]
     }
     resource function post contests/[string... paths](http:Request req) returns http:Response|error {
