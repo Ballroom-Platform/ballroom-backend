@@ -24,13 +24,31 @@ service / on new http:Listener(9099) {
     private final http:Client contestService;
 
     function init() returns error? {
-        self.contestService = check new(contestServiceUrl);
+        self.contestService = check new (contestServiceUrl);
         log:printInfo("BFF service started...1");
     }
 
-    resource function 'default contestService/[string... paths](http:Request req) returns http:Response|error {
-        log:printInfo("Invoking contest service...");
+    resource function get contestService/[string... paths](http:Request req) returns http:Response|error {
+        log:printInfo("Invoking GET contest service...");
         // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-        return self.contestService->forward(req.rawPath, req); 
+        return self.contestService->forward(req.rawPath, req);
+    }
+
+    resource function post contestService/[string... paths](http:Request req) returns http:Response|error {
+        log:printInfo("Invoking GET contest service...");
+        // return self.contestService->forward("/" + string:'join("/", ...paths), req);
+        return self.contestService->forward(req.rawPath, req);
+    }
+
+    resource function put contestService/[string... paths](http:Request req) returns http:Response|error {
+        log:printInfo("Invoking GET contest service...");
+        // return self.contestService->forward("/" + string:'join("/", ...paths), req);
+        return self.contestService->forward(req.rawPath, req);
+    }
+
+    resource function delete contestService/[string... paths](http:Request req) returns http:Response|error {
+        log:printInfo("Invoking GET contest service...");
+        // return self.contestService->forward("/" + string:'join("/", ...paths), req);
+        return self.contestService->forward(req.rawPath, req);
     }
 }
