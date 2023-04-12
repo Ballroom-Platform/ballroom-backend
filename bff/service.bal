@@ -38,37 +38,29 @@ service /web on new http:Listener(9099) {
         log:printInfo("BFF service started...1");
     }
 
-    // resource function get contests/[string contestId]() returns Contest|error {
-    //     log:printInfo("Invoking GET contests by status...");
-    //     return check self.contestService->/contest/[contestId];
+    resource function get contests/[string contestId]() returns Contest|error {
+        log:printInfo("Invoking GET contests by status...");
+        return check self.contestService->/contest/[contestId];
+    }
+
+    resource function get contests(string status) returns Contest[]|error {
+        log:printInfo("Invoking GET contests by status...");
+        return check self.contestService->/contests/[status];
+    }
+
+    resource function get contests/[string contestId]/challenges() returns error|string[] {
+        log:printInfo("Invoking GET challenges by contest...");
+        return check self.contestService->/contest/[contestId]/challenges;
+    }
+
+    // @http:ResourceConfig {
+    //     consumes: ["application/json"],
+    //     produces: ["application/json"]
     // }
-
-    // resource function get contests(string status) returns Contest[]|error {
-    //     log:printInfo("Invoking GET contests by status...");
-    //     return check self.contestService->/contests/[status];
+    // resource function post contests/[string... paths](http:Request req) returns http:Response|error {
+    //     log:printInfo("Invoking POST contest service...");
+    //     return self.contestService->forward(req.rawPath, req);
     // }
-
-    // resource function get contests/[string contestId]/challenges() returns error|string[] {
-    //     log:printInfo("Invoking GET challenges by contest...");
-    //     return check self.contestService->/contest/[contestId]/challenges;
-    // }
-
-    @http:ResourceConfig {
-        consumes: ["application/json"],
-        produces: ["application/json"]
-    }
-    resource function get contests/[string... paths](http:Request req) returns http:Response|error {
-        log:printInfo("Invoking GET contest service...");
-        return self.contestService->forward(req.rawPath, req);
-    }
-
-    @http:ResourceConfig {
-        produces: ["application/json"]
-    }
-    resource function post contests/[string... paths](http:Request req) returns http:Response|error {
-        log:printInfo("Invoking POST contest service...");
-        return self.contestService->forward(req.rawPath, req);
-    }
 
     // resource function post contestService/[string... paths](http:Request req) returns http:Response|error {
     //     log:printInfo("Invoking GET contest service...");
