@@ -1,17 +1,9 @@
 import ballerina/http;
 import ballerina/log;
-import ballerina/time;
+import samjs/ballroom.data_model;
 
 configurable string contestServiceUrl = ?;
-
-public type Contest record {
-    string contestId;
-    string title;
-    string? description;
-    time:Civil startTime;
-    time:Civil endTime;
-    string moderator;
-};
+configurable string challengeServiceUrl = ?;
 
 // http:JwtValidatorConfig config = {
 //     issuer: "ballroomSTS",
@@ -32,18 +24,20 @@ public type Contest record {
 }
 service /web on new http:Listener(9099) {
     private final http:Client contestService;
+    private final http:Client challengeService;
 
     function init() returns error? {
         self.contestService = check new (contestServiceUrl);
-        log:printInfo("BFF service started...1");
+        self.challengeService = check new (challengeServiceUrl);
+        log:printInfo("BFF service started...");
     }
 
-    resource function get contests/[string contestId]() returns Contest|error {
+    resource function get contests/[string contestId]() returns data_model:Contest|error {
         log:printInfo("Invoking GET contests by status...");
         return check self.contestService->/contest/[contestId];
     }
 
-    resource function get contests(string status) returns Contest[]|error {
+    resource function get contests(string status) returns data_model:Contest[]|error {
         log:printInfo("Invoking GET contests by status...");
         return check self.contestService->/contests/[status];
     }
@@ -53,30 +47,19 @@ service /web on new http:Listener(9099) {
         return check self.contestService->/contest/[contestId]/challenges;
     }
 
-    // @http:ResourceConfig {
-    //     consumes: ["application/json"],
-    //     produces: ["application/json"]
-    // }
-    // resource function post contests/[string... paths](http:Request req) returns http:Response|error {
-    //     log:printInfo("Invoking POST contest service...");
-    //     return self.contestService->forward(req.rawPath, req);
-    // }
+    // Challenge Service Calls
+    resource function get challenges/[string challengeId]() returns data_model:Challenge|error {
+        log:printInfo("Invoking GET challenge by id...");
+        return check self.challengeService->/challenge/[challengeId];
+    }
 
-    // resource function post contestService/[string... paths](http:Request req) returns http:Response|error {
-    //     log:printInfo("Invoking GET contest service...");
-    //     // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-    //     return self.contestService->forward(req.rawPath, req);
-    // }
+    resource function get challenges(string difficulty) returns data_model:Challenge[]|error {
+        log:printInfo("Invoking GET challenges by difficulty...");
+        return check self.challengeService->/challenges/difficulty/[difficulty];
+    }
 
-    // resource function put contestService/[string... paths](http:Request req) returns http:Response|error {
-    //     log:printInfo("Invoking GET contest service...");
-    //     // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-    //     return self.contestService->forward(req.rawPath, req);
-    // }
-
-    // resource function delete contestService/[string... paths](http:Request req) returns http:Response|error {
-    //     log:printInfo("Invoking GET contest service...");
-    //     // return self.contestService->forward("/" + string:'join("/", ...paths), req);
-    //     return self.contestService->forward(req.rawPath, req);
-    // }
+    resource function get challenges/[string challengeId]/template() returns byte[]|error {
+        log:printInfo("Invoking GET challenge template by id...");
+        return check self.challengeService->/challenge/template/[challengeId];
+    }
 }
