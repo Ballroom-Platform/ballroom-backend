@@ -1,5 +1,4 @@
 import ballerina/http;
-import contest_service.data_model;
 import ballerinax/mysql;
 import ballerina/sql;
 import ballerinax/mysql.driver as _;
@@ -7,6 +6,7 @@ import ballerina/time;
 import ballerina/uuid;
 import ballerina/io;
 import ballerina/log;
+import samjs/ballroom.data_model;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -58,8 +58,7 @@ service /contestService on new http:Listener(9098) {
     }
 
 
-    resource function get contest/[string contestId]() returns data_model:Contest|error? {
-        
+    resource function get contest/[string contestId]() returns data_model:Contest|error? {      
         data_model:Contest contest = check getContest(contestId);
         return contest;
     }

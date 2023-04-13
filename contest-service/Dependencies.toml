@@ -376,10 +376,23 @@ dependencies = [
 	{org = "ballerina", name = "uuid"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "mysql"},
-	{org = "ballerinax", name = "mysql.driver"}
+	{org = "ballerinax", name = "mysql.driver"},
+	{org = "samjs", name = "ballroom.data_model"}
 ]
 modules = [
-	{org = "ballroom", packageName = "contest_service", moduleName = "contest_service"},
-	{org = "ballroom", packageName = "contest_service", moduleName = "contest_service.data_model"}
+	{org = "ballroom", packageName = "contest_service", moduleName = "contest_service"}
+]
+
+[[package]]
+org = "samjs"
+name = "ballroom.data_model"
+version = "0.1.0"
+dependencies = [
+	{org = "ballerina", name = "sql"},
+	{org = "ballerina", name = "time"},
+	{org = "ballerinai", name = "observe"}
+]
+modules = [
+	{org = "samjs", packageName = "ballroom.data_model", moduleName = "ballroom.data_model"}
 ]
 
