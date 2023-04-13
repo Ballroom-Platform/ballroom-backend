@@ -1,13 +1,13 @@
 import ballerina/http;
-import wso2/data_model;
+import samjs/ballroom.data_model;
 import ballerinax/mysql;
 import ballerina/sql;
 import ballerinax/mysql.driver as _;
 import ballerina/io;
 import ballerina/mime;
-// import ballerina/file;
 import ballerina/regex;
 import ballerina/uuid;
+import ballerina/log;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -27,46 +27,29 @@ type UpdatedChallenge record{
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-        allowCredentials: false,
-        allowHeaders: ["CORELATION_ID"],
-        exposeHeaders: ["X-CUSTOM-HEADER", "Authorization"],
+        allowCredentials: true,
+        allowHeaders: ["CORELATION_ID", "Authorization"],
+        exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
 }
 service /challengeService on new http:Listener(9096) {
-
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
-        }
+    
+    function init() {
+        log:printInfo("Challenge service started...");
     }
+
     resource function get challenge/[string challengeId]() returns data_model:Challenge|error? {
         data_model:Challenge challenge = check getChallenge(challengeId);
         return challenge;
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
-        }
-    }
     resource function get challenges/difficulty/[string difficulty]() returns data_model:Challenge[]?|error {
         
         data_model:Challenge[]|() challengesWithDifficulty = check getChallengesWithDifficulty(difficulty);
         return challengesWithDifficulty;
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
-        }
-    }
     resource function get challenges/template/[string challengeId] () returns byte[]|error{
         final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
 
@@ -77,14 +60,6 @@ service /challengeService on new http:Listener(9096) {
         return testCaseFileBlob;
     }
 
-
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
-        }
-    }
     resource function post challenge(http:Request request) returns string|int|error? {
         io:println("RECVD REQ");
         mime:Entity[] bodyParts = check request.getBodyParts();
@@ -107,11 +82,7 @@ service /challengeService on new http:Listener(9096) {
             }
             // body part is a zipped file
             else {
-                string contentDispositionString = item.getContentDisposition().toString();
-                string[] keyArray = regex:split(contentDispositionString, "name=\"");
-                string key = regex:replaceAll(keyArray[1], "\"", "");
-                // Writes the incoming stream to a file using the `io:fileWriteBlocksFromStream` API
-                // by providing the file location to which the content should be written.
+                string key = item.getContentDisposition().name;
                 stream<byte[], io:Error?> streamer = check item.getByteStream();
                 if key.equalsIgnoreCaseAscii("testCase") {
                     io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/"+fileName+".zip", streamer);
