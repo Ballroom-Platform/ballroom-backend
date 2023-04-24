@@ -2,13 +2,13 @@
 org = "ballroom"
 name = "contest_service"
 version = "0.1.0"
-distribution = "2201.4.1"
+distribution = "2201.5.0"
 
 [build-options]
 observabilityIncluded = true
 
-# [[dependency]]
-# org = "ballroom"
-# name = "data_model"
-# version = "0.1.0"
-# repository="local"
+[[dependency]]
+org = "ballroom"
+name = "data_model"
+version = "0.1.0"
+repository="local"

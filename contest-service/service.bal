@@ -38,34 +38,38 @@ type NewContest record {
     string moderator;
 };
 
-final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
 
 # A service representing a network-accessible API
 # bound to port `9098`.
+# // TODO Remove this CORS config when the BFF is configured properly
+@display {
+    label: "Contest Service",
+    id: "ContestService"
+}
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+        allowOrigins: ["https://localhost:3000", "http://localhost:9099"],
         allowCredentials: true,
-        allowHeaders: ["CORELATION_ID", "Authorization"],
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
 }
 service /contestService on new http:Listener(9098) {
-        
+
     function init() {
         log:printInfo("Contest service started...");
     }
 
-
-    resource function get contest/[string contestId]() returns data_model:Contest|error? {      
+    resource function get contests/[string contestId]() returns data_model:Contest|error {
         data_model:Contest contest = check getContest(contestId);
         return contest;
     }
 
-    resource function get contests/[string status]() returns data_model:Contest[]|error? {
-        log:printInfo("get contests by status invoked", status=status);
-        data_model:Contest[]|error? listOfContests = getContestsWithStatus(status);
+    resource function get contests(string? status) returns data_model:Contest[]|error {
+        log:printInfo("get contests by status invoked", status = status);
+        data_model:Contest[]|error listOfContests = getContestsWithStatus(status ?: "future");
         if listOfContests is error {
             if listOfContests.message().equalsIgnoreCaseAscii("INVALID STATUS!!") {
                 return listOfContests;
@@ -76,8 +80,8 @@ service /contestService on new http:Listener(9098) {
         return listOfContests;
     }
 
-    resource function get contest/[string contestId]/challenges () returns error|string[]|sql:Error? {
-        error|string[]|sql:Error? contestChallenges = getContestChallenges(contestId);
+    resource function get contests/[string contestId]/challenges() returns error|string[]|sql:Error {
+        error|string[]|sql:Error contestChallenges = getContestChallenges(contestId);
         if !(contestChallenges is string[]) {
             return error("DATABASE ERROR");
             // return contestChallenges;
@@ -86,19 +90,19 @@ service /contestService on new http:Listener(9098) {
         return contestChallenges;
     }
 
-    resource function post contest (@http:Payload NewContest newContest) returns string|int|error?{
+    resource function post contests(@http:Payload NewContest newContest) returns string|int|error {
         io:println("REQUEST RECIEVED");
         string generatedContestId = "contest_" + uuid:createType1AsString();
         // data_model:Contest newContestToAdd = {...newContest, moderator: "", contestId: generatedContestId   };
         data_model:Contest newContestToAdd = {
-                                                 contestId : generatedContestId,
-                                                 title: newContest.title,
-                                                 description: newContest.description,
-                                                 startTime: newContest.startTime,
-                                                 endTime: newContest.endTime,
-                                                 moderator: newContest.moderator
-                                            };
-        string|int|error? contestId =  addContest(newContestToAdd);
+            contestId: generatedContestId,
+            title: newContest.title,
+            description: newContest.description,
+            startTime: newContest.startTime,
+            endTime: newContest.endTime,
+            moderator: newContest.moderator
+        };
+        string|int|error contestId = addContest(newContestToAdd);
         if contestId is error {
             return error("ERROR OCCURED, COULD NOT INSERT CONTEST");
             // return contestId;
@@ -106,16 +110,15 @@ service /contestService on new http:Listener(9098) {
         return contestId;
     }
 
-    resource function post contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
-        string|int|error? result =  addChallengeToContest(contestId, challengeId);
+    resource function post contests/[string contestId]/challenges/[string challengeId]() returns string|int|error {
+        string|int|error result = addChallengeToContest(contestId, challengeId);
         if result is error {
             return error("ERROR OCCURED, COULD NOT INSERT CHALLENGE TO CONTEST");
         }
         return result;
     }
 
-
-    resource function put contest/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|error {
+    resource function put contests/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|error {
         error? updatedContest = updateContest(contestId, toBeUpdatedContest);
         if updatedContest is error {
             if updatedContest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID.") {
@@ -127,7 +130,7 @@ service /contestService on new http:Listener(9098) {
         return toBeUpdatedContest;
     }
 
-    resource function delete contest/[string contestId]() returns string|error {
+    resource function delete contests/[string contestId]() returns string|error {
         error? contest = deleteContest(contestId);
         if contest is error {
             if contest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID OR CONTEST IS ONGOING OR ENDED.") {
@@ -140,8 +143,8 @@ service /contestService on new http:Listener(9098) {
         return "DELETE SUCCESSFULL";
     }
 
-    resource function delete contest/[string contestId]/challenge/[string challengeId] () returns string|int|error?{
-        string|int|error? result =  deleteChallengeFromContest(contestId, challengeId);
+    resource function delete contests/[string contestId]/challenges/[string challengeId]() returns string|int|error? {
+        string|int|error? result = deleteChallengeFromContest(contestId, challengeId);
         if result is error {
             return result;
             // return error("ERROR OCCURED, COULD NOT DELETE CHALLENGE FROM CONTEST");
@@ -150,93 +153,91 @@ service /contestService on new http:Listener(9098) {
     }
 }
 
-function addChallengeToContest(string contestId, string challengeId) returns string|int|error? {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-
-    sql:ExecutionResult execRes = check dbClient->execute(`
+function addChallengeToContest(string contestId, string challengeId) returns string|int|error {
+    sql:ExecutionResult execRes = check db->execute(`
         INSERT INTO contest_challenge (contest_id, challenge_id) VALUES (${contestId}, ${challengeId});
     `);
-    check dbClient.close();
-    return execRes.lastInsertId;
+    string|int? lastInsertId = execRes.lastInsertId;
+    if lastInsertId is () {
+        return error("Datbase does not support lastInsertId.");
+    } else {
+        return lastInsertId;
+    }
 }
 
-function deleteChallengeFromContest(string contestId, string challengeId) returns string|int|error? {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-    sql:ExecutionResult execRes = check dbClient->execute(`
+function deleteChallengeFromContest(string contestId, string challengeId) returns string|int|error {
+    sql:ExecutionResult execRes = check db->execute(`
         DELETE FROM contest_challenge WHERE contest_id = ${contestId} AND challenge_id = ${challengeId};
     `);
-    check dbClient.close();
-    return execRes.lastInsertId;
+    string|int? lastInsertId = execRes.lastInsertId;
+    if lastInsertId is () {
+        return error("Datbase does not support lastInsertId.");
+    } else {
+        return lastInsertId;
+    }
 }
 
 function deleteContest(string contestId) returns error? {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-    sql:ExecutionResult execRes = check dbClient->execute(`
+    sql:ExecutionResult execRes = check db->execute(`
         DELETE FROM contest WHERE contest_id = ${contestId} AND CURRENT_TIMESTAMP() <= start_time;
     `);
     if execRes.affectedRowCount == 0 {
         return error("INVALID CONTEST_ID OR CONTEST IS ONGOING OR ENDED.");
     }
-    check dbClient.close();
     return;
 }
 
-function getContestChallenges(string contestId) returns error|string[]|sql:Error? {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-    
-    stream<ChallengeId,sql:Error?> result = dbClient->query(`SELECT challenge_id FROM contest_challenge WHERE contest_id = ${contestId};`);
-    check dbClient.close();
-
-    string[]|sql:Error? listOfChallengeIds = from ChallengeId challengeId in result select challengeId.challengeId;
+function getContestChallenges(string contestId) returns error|string[]|sql:Error {
+    stream<ChallengeId, sql:Error?> result = db->query(`SELECT challenge_id FROM contest_challenge WHERE contest_id = ${contestId};`);
+    string[]|sql:Error listOfChallengeIds = from ChallengeId challengeId in result
+        select challengeId.challengeId;
 
     return listOfChallengeIds;
 }
 
-function updateContest(string contestId, UpdatedContest toBeUpdatedContest) returns error?{
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
-    sql:ExecutionResult execRes = check dbClient->execute(`
+function updateContest(string contestId, UpdatedContest toBeUpdatedContest) returns error? {
+    sql:ExecutionResult execRes = check db->execute(`
         UPDATE contest SET title = ${toBeUpdatedContest.title}, start_time = ${toBeUpdatedContest.startTime}, end_time = ${toBeUpdatedContest.endTime}, moderator = ${toBeUpdatedContest.moderator} WHERE contest_id = ${contestId};
     `);
     if execRes.affectedRowCount == 0 {
         return error("INVALID CONTEST_ID.");
     }
-    check dbClient.close();
     return;
 }
 
-function getContestsWithStatus(string status) returns data_model:Contest[]|sql:Error|error? {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+function getContestsWithStatus(string status) returns data_model:Contest[]|sql:Error|error {
     sql:ParameterizedQuery query = ``;
     if status.equalsIgnoreCaseAscii("future") {
         query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() <= start_time;`;
-    } else if status.equalsIgnoreCaseAscii("present"){
+    } else if status.equalsIgnoreCaseAscii("present") {
         query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() BETWEEN start_time AND end_time;`;
     } else if status.equalsIgnoreCaseAscii("past") {
         query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() >= end_time;`;
     } else {
         return error("INVALID STATUS!!");
     }
-    stream<data_model:Contest,sql:Error?> result = dbClient->query(query);
-    check dbClient.close();
+    stream<data_model:Contest, sql:Error?> result = db->query(query);
 
-    data_model:Contest[]|sql:Error? listOfContests = from data_model:Contest contest in result select contest;
+    data_model:Contest[]|sql:Error listOfContests = from data_model:Contest contest in result
+        select contest;
 
     return listOfContests;
 }
 
-function addContest(data_model:Contest newContest) returns string|int?|error{
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+function addContest(data_model:Contest newContest) returns string|int|error {
     string generatedContestId = "contest-" + uuid:createType1AsString();
-
-    sql:ExecutionResult execRes = check dbClient->execute(`
+    sql:ExecutionResult execRes = check db->execute(`
         INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES (${generatedContestId},${newContest.title}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
     `);
-    check dbClient.close();
-    return execRes.lastInsertId;
+    string|int? lastInsertId = execRes.lastInsertId;
+    if lastInsertId is () {
+        return error("Datbase does not support lastInsertId.");
+    } else {
+        return lastInsertId;
+    }
 }
 
 function getContest(string contestId) returns data_model:Contest|sql:Error|error {
-    data_model:Contest|sql:Error result = dbClient->queryRow(`SELECT * FROM contest WHERE contest_id = ${contestId}`);
-    check dbClient.close();
+    data_model:Contest|sql:Error result = db->queryRow(`SELECT * FROM contest WHERE contest_id = ${contestId}`);
     return result;
 }
