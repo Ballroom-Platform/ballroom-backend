@@ -1,7 +1,8 @@
 import ballerina/http;
 import ballerina/jwt;
-import wso2/data_model;
-// import ballerina/io;
+import ballroom/data_model;
+import ballerina/log;
+import ballerina/io;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -23,6 +24,10 @@ public type Data record {
 
 # A service representing a network-accessible API
 # bound to port `9090`.
+@display {
+    label: "STS Service",
+    id: "STSService"
+}
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["https://localhost:3000"],
@@ -33,9 +38,13 @@ public type Data record {
     }
 }
 service /sts on new http:Listener(9093) {
-
+    
+    function init() {
+        log:printInfo("STS service started...");
+    }
+    
     isolated resource function get accessToken(@http:Header string Authorization) returns http:Forbidden | http:Response | http:InternalServerError {
-
+        log:printInfo("Access token request received");
         do{
             json idpResult = check verifyIDPToken(Authorization);
 
@@ -44,10 +53,11 @@ service /sts on new http:Listener(9093) {
             }
 
             string userID = check idpResult.sub;
+            log:printInfo("User ID: ", userID= userID);
             json? userInfo = check getUserInfoFromIDP(Authorization);
+            log:printInfo("User info: ", userInfo= userInfo.toString());
             json? | error userData = getUserData(userID);
-
-            if userData is error?{
+            if userData is error? {
                 http:Client userClient = check new("http://localhost:9095/userService");
                 data_model:User user = {
                     fullname: check userInfo?.name,
@@ -55,18 +65,24 @@ service /sts on new http:Listener(9093) {
                     user_id: userID,
                     username: check userInfo?.username
                 };
+                log:printInfo("User: ", user= user);
+
                 _ = check userClient->post("/user", headers = {"Content-Type":"application/json"}, message = user.toJson(), targetType = json);
-                
+                log:printInfo("User added to the database");        
 
                 userData = check getUserData(userID);
+                log:printInfo("User data recived ");
             }
 
+            io:println("Generating access token");
             string accessToken = check generateToken(check userData, 3600);
+            log:printInfo("Access token generated", accessToken= accessToken);
 
             string refreshToken = check generateToken(check userData, 3600*24*30);
+            log:printInfo("Access token generated", accessToken= accessToken);
 
             check storeRefreshTokenUser(refreshToken, userID);
-
+            log:printInfo("Refresh token stored");
 
             http:CookieOptions cookieOptions = {
                 maxAge: 300,
@@ -91,7 +107,8 @@ service /sts on new http:Listener(9093) {
             response.statusCode = 200;
             return response;
         }
-        on fail {
+        on fail error e {
+            log:printError("Error occured", 'error= e);
             return http:INTERNAL_SERVER_ERROR;
         }
         
