@@ -1,6 +1,8 @@
 import ballerina/http;
 import ballerina/sql;
-import wso2/data_model;
+import ballerina/log;
+import ballroom/data_model;
+import ballerina/io;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -10,20 +12,28 @@ configurable string DATABASE = ?;
 
 # A service representing a network-accessible API
 # bound to port `9090`.
+# 
+@display {
+   label: "User Service",
+   id: "UserService"
+}
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-        allowCredentials: false,
-        allowHeaders: ["CORELATION_ID"],
-        exposeHeaders: ["X-CUSTOM-HEADER", "Authorization"],
+        allowOrigins: ["https://localhost:3000"],
+        allowCredentials: true,
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-type"],
+        exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
 }
 service /userService on new http:Listener(9095) {
+    
+    function init() {
+        log:printInfo("User service started...");
+    }
 
-
-    resource function get user/[string userID]() returns Payload | http:InternalServerError | http:STATUS_NOT_FOUND {
-        
+    resource function get users/[string userID]() returns Payload | http:InternalServerError | http:STATUS_NOT_FOUND {
+        io:println("Get user invoked");
         do{
             data_model:User | error result = getUserData(userID);
 
@@ -42,15 +52,7 @@ service /userService on new http:Listener(9095) {
         
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
-        }
-    }
-    resource function get users/role/[string role] () returns data_model:User[] | http:InternalServerError | http:STATUS_NOT_FOUND {
-        
+    resource function get users(string role) returns data_model:User[] | http:InternalServerError | http:STATUS_NOT_FOUND {  
         do{
 
             data_model:User[]|sql:Error? usersByRole = getUsersByRole(role);
@@ -64,18 +66,10 @@ service /userService on new http:Listener(9095) {
         }
         on fail{
             return http:INTERNAL_SERVER_ERROR;
-        }
-        
+        } 
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
-        }
-    }
-    resource function get user/[string userId]/role () returns Payload | http:InternalServerError | http:STATUS_NOT_FOUND {
+    resource function get users/[string userId]/roles () returns Payload | http:InternalServerError | http:STATUS_NOT_FOUND {
         
         do{
 
@@ -95,9 +89,8 @@ service /userService on new http:Listener(9095) {
         
     }
 
-
-    resource function post user(@http:Payload data_model:User user) returns Payload | http:InternalServerError {
-        
+    resource function post users(@http:Payload data_model:User user) returns Payload | http:InternalServerError {
+        log:printInfo("Post user invoked", user = user);
         do{
             _ = check createUser(user);
 
@@ -113,14 +106,8 @@ service /userService on new http:Listener(9095) {
         
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization"]
-        }
-    }
-    resource function put users/[string userId]/role/[string role] () returns error? {
+    resource function put users/[string userId]/roles/[string role] () returns error? {
+        log:printInfo("Put user invoked", userId = userId, role = role);
         error? userRole = updateUserRole(userId, role);
         return userRole;
     }
