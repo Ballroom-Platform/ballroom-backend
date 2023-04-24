@@ -1,11 +1,11 @@
 import ballerina/io;
 import ballerinax/rabbitmq;
 import ballerina/file;
-import wso2/data_model;
+import ballroom/data_model;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 import ballerina/regex;
-
+import ballerina/log;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -13,12 +13,17 @@ configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
 
+configurable string rabbitmqHost = ?;
+configurable int rabbitmqPort = ?;
 
-// const SCORE_OUTPUT_FILEPATH = "";
 
 // The consumer service listens to the "RequestQueue" queue.
-listener rabbitmq:Listener channelListener= new(rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
-   
+listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
+
+// @display {
+//     label: "Executor Service",
+//     id: "ExecutorService"
+// }
 @rabbitmq:ServiceConfig {
     queueName: data_model:QUEUE_NAME
 }
@@ -29,13 +34,18 @@ service rabbitmq:Service on channelListener {
     function init() returns error? {
         // Initiate the RabbitMQ client at the start of the service. This will be used
         // throughout the lifetime of the service.
-        self.rabbitmqClient = check new (rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
+        log:printInfo("Executor service starting...");
+        self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort);
+        log:printInfo("Executor service started...");
     }
 
     remote function onMessage(data_model:SubmissionMessage submissionEvent) returns error? {
-
         // need to evaluate the score
-        data_model:ScoredSubmissionMessage scoredSubMsg = check handleEvent(submissionEvent);
+        data_model:ScoredSubmissionMessage|error scoredSubMsg = handleEvent(submissionEvent);
+        if (scoredSubMsg is error) {
+            log:printError("Error occurred while handling the event", 'error = scoredSubMsg);
+            return scoredSubMsg;
+        }
 
         check self.rabbitmqClient->publishMessage({
             content: scoredSubMsg,
@@ -45,36 +55,36 @@ service rabbitmq:Service on channelListener {
 }
 
 function handleEvent(data_model:SubmissionMessage submissionEvent) returns error|data_model:ScoredSubmissionMessage {
-    string basePath = "../storedFiles/";
+    string basePath = check file:createTempDir(prefix = "ballroom_executor_");
     string fileNameWithExtension = submissionEvent.fileName + submissionEvent.fileExtension;
-    
+
     // get the file
-    string|error storedLocation = getAndStoreFile(submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.submissionId);
+    string storedLocation = check getAndStoreFile(basePath, submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.submissionId);
 
     // unzip the submissionZip
-    string[] unzipArguments = ["unzip " + basePath + fileNameWithExtension + " -d " + basePath + submissionEvent.fileName + "/"];
-
-    string[]|error executeCommandResult1 = executeCommand(unzipArguments);
+    string[] unzipArguments = ["unzip " + basePath + "/" + fileNameWithExtension + " -d " + basePath + "/" + submissionEvent.fileName + "/"];
+    _ = check executeCommand(unzipArguments);
 
     // replace the test cases
-    check file:remove(basePath + submissionEvent.fileName + "/tests", file:RECURSIVE);
+    string testDirPath = check file:joinPath(basePath, submissionEvent.fileName, "tests");
+    check file:remove(testDirPath, file:RECURSIVE);
 
     // get the test case file and store in the same location
-    () _ = check getAndStoreTestCase(submissionEvent.challengeId, check storedLocation);
+    () _ = check getAndStoreTestCase(submissionEvent.challengeId, storedLocation);
 
-    string[] testUnzipArguments = ["unzip " + basePath + submissionEvent.fileName + "/testsZip" + " -d " + basePath + submissionEvent.fileName + "/tests/"];
-    string[]|error executeCommandResult2 = executeCommand(testUnzipArguments);
+    string[] testUnzipArguments = ["unzip " + basePath + "/" + submissionEvent.fileName + "/testsZip" + " -d " + basePath + "/" + submissionEvent.fileName + "/tests/"];
+    _ = check executeCommand(testUnzipArguments);
 
-    string[] testCommand = ["cd " + check storedLocation +  " && bal test"];
+    string[] testCommand = ["cd " + storedLocation + " && bal test"];
 
     string[] executeCommandResult = check executeCommand(testCommand);
-
     float score = check calculateScore(executeCommandResult);
 
     data_model:ScoredSubmissionMessage scoredSubMsg = {subMsg: submissionEvent, score: score};
+    log:printInfo("Scored submission message: ", scoreSubmission = scoredSubMsg);
 
+    check file:remove(basePath, file:RECURSIVE);
     return scoredSubMsg;
-
 }
 
 function calculateScore(string[] executeCommandResult) returns float|error {
@@ -98,18 +108,18 @@ function calculateScore(string[] executeCommandResult) returns float|error {
             break;
         } else {
             if (string:includes(line, "passing") && !processPassing) {
-            passingTests = check int:fromString(regex:split(string:trim(line), " ")[0]);
-            totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
-            processPassing = true;
-        }
-        if (string:includes(line, "failing") && !processFailing) {
-            totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
-            processFailing = true;
-        }
-        if (string:includes(line, "skipped") && !processSkipped) {
-            totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
-            processSkipped = true;
-        }
+                passingTests = check int:fromString(regex:split(string:trim(line), " ")[0]);
+                totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
+                processPassing = true;
+            }
+            if (string:includes(line, "failing") && !processFailing) {
+                totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
+                processFailing = true;
+            }
+            if (string:includes(line, "skipped") && !processSkipped) {
+                totalTests += check int:fromString(regex:split(string:trim(line), " ")[0]);
+                processSkipped = true;
+            }
         }
     }
     if totalTests > 0 {
@@ -123,53 +133,16 @@ function getTestDirPath(string challengeId) returns string {
     return "./challengetests/tests/";
 }
 
-function getAndStoreFile(string fileName, string fileExtension, string submissionId) returns string|error{
-    string basePath = "../storedFiles";
-    string fileLocation = fileName + fileExtension;
-    // should get the file from the given location and store it somewhere, then return where you stored it
-    boolean dirExists = check file:test(basePath, file:EXISTS);
-    if(!dirExists){
-        check file:createDir(basePath, file:RECURSIVE);
-    }
-    //check file:copy("../upload-service/files/" + fileLocation,  "../storedFiles/" + fileLocation, file:REPLACE_EXISTING);
-
-    // The Redis Configuration
-    // redis:ConnectionConfig redisConfig = {
-    //         host: "127.0.0.1:6379",
-    //         password: "",
-    //         options: {
-    //             connectionPooling: true,
-    //             isClusterConnection: false,
-    //             ssl: false,
-    //             startTls: false,
-    //             verifyPeer: false,
-    //             connectionTimeout: 500
-    //         }
-    //     };
-
-    // redis:Client redisConn = check new (redisConfig);
-    // string? redisString = check redisConn->get(redisKey);
-    // redisConn.stop();
-    // if (redisString is ()) {
-    //     return error("Submission missing in datastore.");
-    // }
-    // byte[] byteArray = string:toBytes(redisString);
-    // byte[] byteStream = <byte[]>(check mime:base64Decode(byteArray));
-
+function getAndStoreFile(string basePath, string fileName, string fileExtension, string submissionId) returns string|error {
     byte[] fileFromDB = check getFileFromDB(submissionId);
-
-    check io:fileWriteBytes(basePath + "/" + fileLocation, fileFromDB);
-
-
-    return basePath + "/" + fileName + "/";
+    string filePath = check file:joinPath(basePath, fileName + fileExtension);
+    check io:fileWriteBytes(filePath, fileFromDB);
+    return file:joinPath(basePath, fileName);
 }
 
-function getAndStoreTestCase(string challengeId, string location) returns error?{
-
+function getAndStoreTestCase(string challengeId, string location) returns error? {
     byte[] fileFromDB = check getTestCaseFromDB(challengeId);
-
     check io:fileWriteBytes(location + "/testsZip", fileFromDB);
-
 }
 
 # Description
@@ -203,11 +176,12 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
         io:println(line);
         output.push(check line);
     }
+
     return output;
 }
 
 isolated function getFileFromDB(string submissionId) returns byte[]|error {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    final mysql:Client dbClient = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
     byte[] submissionFileBlob = check dbClient->queryRow(
         `SELECT submission_file FROM submission WHERE submission_id = ${submissionId}`
     );
@@ -216,7 +190,7 @@ isolated function getFileFromDB(string submissionId) returns byte[]|error {
 }
 
 isolated function getTestCaseFromDB(string challengeId) returns byte[]|error {
-    final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
+    final mysql:Client dbClient = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
     byte[] testCaseFileBlob = check dbClient->queryRow(
         `SELECT testcase FROM challenge WHERE challenge_id = ${challengeId}`
     );
