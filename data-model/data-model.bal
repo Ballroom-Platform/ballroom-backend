@@ -113,10 +113,10 @@ public type SubmissionMessage record {
     string submissionId;
 };
 
-public type ScoredSubmissionMessage record {
+public type ScoredSubmissionMessage record {|
     SubmissionMessage subMsg;
     float score;
-};
+|};
 
 // public enum ChallengeDifficulty {
 //     EASY = "EASY",
