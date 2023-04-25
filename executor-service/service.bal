@@ -181,7 +181,7 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
 isolated function getFileFromDB(string submissionId) returns byte[]|error {
     final mysql:Client dbClient = check new(host=HOST, user=USER, password=PASSWORD, port=PORT,database=DATABASE);
     byte[] submissionFileBlob = check dbClient->queryRow(
-        `SELECT submission_file FROM submission WHERE submission_id = ${submissionId}`
+        `SELECT submission_file FROM submission_file_table WHERE submission_id = ${submissionId}`
     );
     check dbClient.close();
     return submissionFileBlob;
