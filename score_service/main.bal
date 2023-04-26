@@ -1,7 +1,7 @@
 import ballerinax/mysql;
 import ballerina/sql;
 import ballerinax/mysql.driver as _;
-import samjs/ballroom.data_model;
+import ballroom/data_model;
 import score_service.user;
 
 // configurable string userServiceUrl = ?;

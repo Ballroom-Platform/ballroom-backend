@@ -84,7 +84,7 @@ modules = [
 
 [[package]]
 org = "ballroom"
-name = "ballroom.data_model"
+name = "data_model"
 version = "0.1.0"
 dependencies = [
 	{org = "ballerina", name = "io"},
@@ -93,7 +93,7 @@ dependencies = [
 	{org = "ballerinai", name = "observe"}
 ]
 modules = [
-	{org = "ballroom", packageName = "ballroom.data_model", moduleName = "ballroom.data_model"},
-	{org = "ballroom", packageName = "ballroom.data_model", moduleName = "ballroom.data_model.registry"}
+	{org = "ballroom", packageName = "data_model", moduleName = "data_model"},
+	{org = "ballroom", packageName = "data_model", moduleName = "data_model.registry"}
 ]
 

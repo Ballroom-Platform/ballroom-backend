@@ -1,5 +1,5 @@
 import ballerina/http;
-import samjs/ballroom.data_model;
+import ballroom/data_model;
 import ballerinax/mysql;
 import ballerina/sql;
 import ballerinax/mysql.driver as _;

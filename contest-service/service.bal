@@ -5,7 +5,7 @@ import ballerinax/mysql.driver as _;
 import ballerina/time;
 import ballerina/uuid;
 import ballerina/log;
-import samjs/ballroom.data_model;
+import ballroom/data_model;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;

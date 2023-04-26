@@ -1,9 +1,9 @@
 [package]
-distribution = "2201.5.0"
-export = ["ballroom.data_model.registry", "ballroom.data_model"]
-name = "ballroom.data_model"
 org = "ballroom"
+name = "data_model"
 version = "0.1.0"
+distribution = "2201.5.0"
+export = ["data_model.registry", "data_model"]
 
 [build-options]
 observabilityIncluded = true

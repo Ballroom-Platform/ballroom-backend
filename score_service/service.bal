@@ -1,5 +1,5 @@
 import ballerinax/rabbitmq;
-import samjs/ballroom.data_model;
+import ballroom/data_model;
 import ballerina/http;
 import ballerina/sql;
 import ballerina/time;
