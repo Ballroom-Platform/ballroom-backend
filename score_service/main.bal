@@ -57,7 +57,7 @@ isolated function getSubmissionFile(string submissionId) returns byte[] | error 
     }
 
     byte[] | sql:Error result = dbClient->queryRow(`
-        SELECT submission_file FROM submission WHERE submission_id = ${submissionId};`);
+        SELECT submission_file FROM submission_file_table WHERE submission_id = ${submissionId};`);
     check dbClient.close();
     return result;
 }
