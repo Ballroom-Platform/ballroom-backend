@@ -117,7 +117,7 @@ service /uploadService on new http:Listener(9094) {
 isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns error? {
     // TODO These two queries should be in a transaction
     sql:ExecutionResult _ = check db->execute(`
-        INSERT INTO submission (submission_id, user_id, contest_id, challenge_id, file_name, file_extension, submission_file, submitted_time)
+        INSERT INTO submission (submission_id, user_id, contest_id, challenge_id, file_name, file_extension, submitted_time)
         VALUES (${submissionMessage.submissionId}, ${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
         ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, CURRENT_TIMESTAMP())
     `);
