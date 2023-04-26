@@ -60,7 +60,6 @@ CREATE TABLE submission (
     user_id VARCHAR(255) NOT NULL,
     contest_id VARCHAR(255) NOT NULL,
     challenge_id VARCHAR(255) NOT NULL,
-    submission_file BLOB,
     submitted_time TIMESTAMP NOT NULL,
     score FLOAT,
     file_name VARCHAR(255) NOT NULL,
@@ -69,6 +68,13 @@ CREATE TABLE submission (
     FOREIGN KEY (user_id) REFERENCES user(user_id),
     FOREIGN KEY (contest_id) REFERENCES contest(contest_id),
     FOREIGN KEY (challenge_id) REFERENCES challenge(challenge_id)
+);
+
+CREATE TABLE submission_file_table (
+    submission_id VARCHAR(255) NOT NULL,
+    submission_file BLOB,
+    PRIMARY KEY (submission_id),
+    FOREIGN KEY (submission_id) REFERENCES submission(submission_id)
 );
 /* -------------------------UPLOAD SERVICE---------------------------- */
 

@@ -43,9 +43,9 @@ isolated function getSubmissionList(string userId, string contestId, string chal
     return listOfSubmissions;
 }
 
-isolated function getSubmissionFile(string submissionId) returns byte[]|error {
-    byte[]|sql:Error result = db->queryRow(`
-        SELECT submission_file FROM submission WHERE submission_id = ${submissionId};`);
+isolated function getSubmissionFile(string submissionId) returns byte[] | error {
+    byte[] | sql:Error result = db->queryRow(`
+        SELECT submission_file FROM submission_file_table WHERE submission_id = ${submissionId};`);
     return result;
 }
 
