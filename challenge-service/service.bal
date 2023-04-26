@@ -45,29 +45,44 @@ service /challengeService on new http:Listener(9096) {
         log:printInfo("Challenge service started...");
     }
 
-    resource function get challenges/[string challengeId]() returns data_model:Challenge|error {
-        data_model:Challenge challenge = check getChallenge(challengeId);
+    resource function get challenges/[string challengeId]() returns data_model:Challenge|http:InternalServerError|http:NotFound|error {
+        data_model:Challenge|error challenge = getChallenge(challengeId);
+        if challenge is sql:Error {
+            if challenge is sql:NoRowsError {
+                return http:NOT_FOUND;
+            }
+            return http:INTERNAL_SERVER_ERROR;
+        }
         return challenge;
     }
 
-    resource function get challenges(string difficulty) returns data_model:Challenge[]|error {
-        data_model:Challenge[] challengesWithDifficulty = check getChallengesWithDifficulty(difficulty);
-        return challengesWithDifficulty;
+    resource function get challenges(string difficulty) returns data_model:Challenge[]|http:InternalServerError|http:BadRequest|error {
+        if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
+            return http:BAD_REQUEST;
+        }
+
+        data_model:Challenge[]|sql:Error challengesWithDifficulty = getChallengesWithDifficulty(difficulty);
+        if challengesWithDifficulty is data_model:Challenge[] {
+            return challengesWithDifficulty;
+        } else if challengesWithDifficulty is sql:Error {
+            return http:INTERNAL_SERVER_ERROR;
+        }
     }
 
     // OpenAPI Tool Bug:https://github.com/ballerina-platform/openapi-tools/issues/1314  returns byte[]|error
-    resource function get challenges/[string challengeId]/template() returns @http:Payload {mediaType: "application/octet-stream"} http:Response|error {
-
-        byte[] testCaseFileBlob = check db->queryRow(
-            `SELECT challenge_template FROM challenge WHERE challenge_id = ${challengeId}`
-        );
-
+    resource function get challenges/[string challengeId]/template() returns @http:Payload {mediaType: "application/octet-stream"} http:Response|http:InternalServerError|http:NotFound|error {
+        byte[]|sql:Error template = getTemplate(challengeId);
+        if template is sql:Error {
+            if template is sql:NoRowsError {
+                return http:NOT_FOUND;
+            }
+            return http:INTERNAL_SERVER_ERROR;
+        }
         http:Response response = new;
-        response.setBinaryPayload(testCaseFileBlob);
+        response.setBinaryPayload(template);
         return response;
     }
 
-    
     resource function post challenges(http:Request request) returns string|int|error {
         io:println("RECVD REQ");
         mime:Entity[] bodyParts = check request.getBodyParts();
@@ -99,7 +114,6 @@ service /challengeService on new http:Listener(9096) {
                 }
 
                 check streamer.close();
-                io:println("------");
             }
 
         }
@@ -113,28 +127,29 @@ service /challengeService on new http:Listener(9096) {
 
     // TODO: Why are we returning a string here?
     // TODO: Shouldn't they be errors?
-    resource function put challenges/[string challengeId](UpdatedChallenge updatedChallenge) returns UpdatedChallenge|string|error {
+    resource function put challenges/[string challengeId](UpdatedChallenge updatedChallenge) returns UpdatedChallenge|string|http:InternalServerError|http:NotFound|error {
         error? challenge = updateChallenge(challengeId, updatedChallenge);
         if challenge is error {
-            if challenge.message().equalsIgnoreCaseAscii("INVALID CHALLENGE_ID.") {
-                return "INVALID CHALLENGE_ID.";
+            if challenge is sql:Error {
+                return http:INTERNAL_SERVER_ERROR;
             }
-            return "DATABASE ERROR!";
+            return http:NOT_FOUND;
         }
         updatedChallenge["challengeId"] = challengeId;
         return updatedChallenge;
     }
 
-    resource function delete challenges/[string challengeId]() returns string {
+    resource function delete challenges/[string challengeId]() returns http:InternalServerError|http:STATUS_NOT_FOUND|http:STATUS_OK {
         error? challenge = deleteChallenge(challengeId);
         if challenge is error {
-            if challenge.message().equalsIgnoreCaseAscii("INVALID CHALLENGE_ID.") {
-                return "INVALID CHALLENGE_ID.";
+            if challenge is sql:Error {
+                return http:INTERNAL_SERVER_ERROR;
             }
-            return "DATABASE ERROR!";
+            return http:STATUS_NOT_FOUND;
         }
 
-        return "DELETE SUCCESSFULL";
+        return http:STATUS_OK;
+
     }
 }
 
@@ -183,5 +198,13 @@ isolated function getChallengesWithDifficulty(string difficulty) returns data_mo
         select challenge;
 
     return listOfChallenges;
+
+}
+
+isolated function getTemplate(string challengeId) returns byte[]|sql:Error {
+    final mysql:Client dbClient = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
+    byte[]|sql:Error result = dbClient->queryRow(`SELECT challenge_template FROM challenge WHERE challenge_id = ${challengeId}`);
+    check dbClient.close();
+    return result;
 
 }

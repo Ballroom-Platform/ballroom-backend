@@ -6,6 +6,7 @@ import ballerinax/mysql;
 import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 import ballerina/regex;
 import ballerina/log;
+import executor_service.utils as utils;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -15,7 +16,6 @@ configurable string DATABASE = ?;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
-
 
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
@@ -158,15 +158,15 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
     });
     _ = newArgs.pop();
 
-    ProcessBuilder builder = check newProcessBuilder2(newArgs);
+    utils:ProcessBuilder builder = check utils:newProcessBuilder2(newArgs);
     if workdingDir is string {
-        builder = builder.directory2(newFile2(workdingDir));
+        builder = builder.directory2(utils:newFile2(workdingDir));
     }
     _ = builder.redirectErrorStream2(true);
 
-    Process p = check builder.start();
-    BufferedReader r = newBufferedReader1(newInputStreamReader1(p.getInputStream()));
-    string?|IOException line;
+    utils:Process p = check builder.start();
+    utils:BufferedReader r = utils:newBufferedReader1(utils:newInputStreamReader1(p.getInputStream()));
+    string?|utils:IOException line;
     string[] output = [];
     while (true) {
         line = check r.readLine();

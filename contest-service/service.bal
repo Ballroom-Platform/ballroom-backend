@@ -4,7 +4,6 @@ import ballerina/sql;
 import ballerinax/mysql.driver as _;
 import ballerina/time;
 import ballerina/uuid;
-import ballerina/io;
 import ballerina/log;
 import samjs/ballroom.data_model;
 
@@ -62,38 +61,44 @@ service /contestService on new http:Listener(9098) {
         log:printInfo("Contest service started...");
     }
 
-    resource function get contests/[string contestId]() returns data_model:Contest|error {
-        data_model:Contest contest = check getContest(contestId);
+    resource function get contests/[string contestId]() returns data_model:Contest|http:InternalServerError|http:NotFound {
+        data_model:Contest|sql:Error contest = getContest(contestId);
+        if contest is sql:Error {
+            if contest is sql:NoRowsError {
+                return http:NOT_FOUND;
+            }
+            return http:INTERNAL_SERVER_ERROR;
+        }
+
         return contest;
     }
 
-    resource function get contests(string? status) returns data_model:Contest[]|error {
+    resource function get contests(string? status) returns data_model:Contest[]|http:InternalServerError|http:NotFound {
         log:printInfo("get contests by status invoked", status = status);
-        data_model:Contest[]|error listOfContests = getContestsWithStatus(status ?: "future");
-        if listOfContests is error {
-            if listOfContests.message().equalsIgnoreCaseAscii("INVALID STATUS!!") {
-                return listOfContests;
-            }
-            // return error("ERROR OCCURED");
-            return listOfContests;
-        }
-        return listOfContests;
-    }
+        data_model:Contest[]|sql:Error|error contestsWithStatus = getContestsWithStatus(status ?: "future");
+        if contestsWithStatus is data_model:Contest[] {
+            return contestsWithStatus;
 
-    resource function get contests/[string contestId]/challenges() returns error|string[]|sql:Error {
-        error|string[]|sql:Error contestChallenges = getContestChallenges(contestId);
-        if !(contestChallenges is string[]) {
-            return error("DATABASE ERROR");
-            // return contestChallenges;
+        } else if contestsWithStatus is sql:Error? {
+            return http:INTERNAL_SERVER_ERROR;
+
+        } else if contestsWithStatus is error {
+            return http:NOT_FOUND;
         }
 
-        return contestChallenges;
     }
 
-    resource function post contests(@http:Payload NewContest newContest) returns string|int|error {
-        io:println("REQUEST RECIEVED");
+    resource function get contests/[string contestId]/challenges() returns string[]|http:InternalServerError {
+        string[]|sql:Error contestChallenges = getContestChallenges(contestId);
+        if contestChallenges is string[] {
+            return contestChallenges;
+        } else if contestChallenges is sql:Error {
+            return http:INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    resource function post contests(@http:Payload NewContest newContest) returns string|int|http:InternalServerError|error {
         string generatedContestId = "contest_" + uuid:createType1AsString();
-        // data_model:Contest newContestToAdd = {...newContest, moderator: "", contestId: generatedContestId   };
         data_model:Contest newContestToAdd = {
             contestId: generatedContestId,
             title: newContest.title,
@@ -102,54 +107,61 @@ service /contestService on new http:Listener(9098) {
             endTime: newContest.endTime,
             moderator: newContest.moderator
         };
-        string|int|error contestId = addContest(newContestToAdd);
-        if contestId is error {
-            return error("ERROR OCCURED, COULD NOT INSERT CONTEST");
-            // return contestId;
+
+        string|int|error contest = addContest(newContestToAdd);
+        if contest is error {
+            return http:INTERNAL_SERVER_ERROR;
         }
-        return contestId;
+
+        return contest;
     }
 
-    resource function post contests/[string contestId]/challenges/[string challengeId]() returns string|int|error {
-        string|int|error result = addChallengeToContest(contestId, challengeId);
-        if result is error {
-            return error("ERROR OCCURED, COULD NOT INSERT CHALLENGE TO CONTEST");
+    resource function post contests/[string contestId]/challenges/[string challengeId]() returns string|int|http:InternalServerError|error {
+        string|int|sql:Error|error challengeToContest = addChallengeToContest(contestId, challengeId);
+
+        if challengeToContest is sql:Error {
+            if challengeToContest.message().includes("Duplicate entry", 0) {
+                return error("Challenge already added to contest", message = "Duplicate entry");
+            }
+            return http:INTERNAL_SERVER_ERROR;
         }
-        return result;
+
+        return challengeToContest;
+
     }
 
-    resource function put contests/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|error {
+    resource function put contests/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|http:InternalServerError|http:NotFound {
         error? updatedContest = updateContest(contestId, toBeUpdatedContest);
         if updatedContest is error {
-            if updatedContest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID.") {
-                return updatedContest;
+            if updatedContest is sql:Error {
+                return http:INTERNAL_SERVER_ERROR;
             }
-            return error("DATABASE ERROR!");
+            return http:NOT_FOUND;
         }
         toBeUpdatedContest["contestId"] = contestId;
         return toBeUpdatedContest;
     }
 
-    resource function delete contests/[string contestId]() returns string|error {
+    resource function delete contests/[string contestId]() returns http:InternalServerError|http:NotFound|http:Ok {
         error? contest = deleteContest(contestId);
         if contest is error {
-            if contest.message().equalsIgnoreCaseAscii("INVALID CONTEST_ID OR CONTEST IS ONGOING OR ENDED.") {
-                return contest;
+            if contest is sql:Error {
+                return http:INTERNAL_SERVER_ERROR;
             }
-            return error("DATABASE ERROR");
-            // return contest;
+            return http:NOT_FOUND;
         }
 
-        return "DELETE SUCCESSFULL";
+        return http:OK;
+
     }
 
-    resource function delete contests/[string contestId]/challenges/[string challengeId]() returns string|int|error? {
-        string|int|error? result = deleteChallengeFromContest(contestId, challengeId);
-        if result is error {
-            return result;
-            // return error("ERROR OCCURED, COULD NOT DELETE CHALLENGE FROM CONTEST");
+    resource function delete contests/[string contestId]/challenges/[string challengeId]() returns http:InternalServerError|http:NotFound|http:Ok {
+        string|int|sql:Error|error challengeFromContest = deleteChallengeFromContest(contestId, challengeId);
+        if challengeFromContest is sql:Error {
+            return http:INTERNAL_SERVER_ERROR;
         }
-        return "DELETE SUCCESSFULL";
+
+        return http:OK;
     }
 }
 
@@ -187,7 +199,7 @@ function deleteContest(string contestId) returns error? {
     return;
 }
 
-function getContestChallenges(string contestId) returns error|string[]|sql:Error {
+function getContestChallenges(string contestId) returns string[]|sql:Error {
     stream<ChallengeId, sql:Error?> result = db->query(`SELECT challenge_id FROM contest_challenge WHERE contest_id = ${contestId};`);
     string[]|sql:Error listOfChallengeIds = from ChallengeId challengeId in result
         select challengeId.challengeId;
@@ -237,7 +249,7 @@ function addContest(data_model:Contest newContest) returns string|int|error {
     }
 }
 
-function getContest(string contestId) returns data_model:Contest|sql:Error|error {
+function getContest(string contestId) returns data_model:Contest|sql:Error {
     data_model:Contest|sql:Error result = db->queryRow(`SELECT * FROM contest WHERE contest_id = ${contestId}`);
     return result;
 }
