@@ -4,7 +4,7 @@ import ballerinax/mysql.driver as _;
 import ballroom/data_model;
 import score_service.user;
 
-// configurable string userServiceUrl = ?;
+configurable string userServiceUrl = ?;
 
 public type Payload record {
     string message;
@@ -15,7 +15,7 @@ public type Payload record {
    label: "User Service",
    id: "UserService"
 }
-final user:Client userService = check new ();
+final user:Client userService = check new (serviceUrl = userServiceUrl);
 
 final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
 
