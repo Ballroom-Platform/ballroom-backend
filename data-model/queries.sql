@@ -23,6 +23,19 @@ CREATE TABLE contest (
     CHECK (start_time < end_time)
 );
 
+/* -------------------------CHALLENGES SERVICE---------------------------- */
+CREATE TABLE challenge (
+    challenge_id VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description VARCHAR(500) NOT NULL,
+    constraints VARCHAR(500),
+    challenge_template BLOB,
+    difficulty ENUM('EASY', 'MEDIUM', 'HARD') NOT NULL,
+    testcase BLOB NOT NULL,
+    PRIMARY KEY (challenge_id)
+);
+/* -------------------------CHALLENGES SERVICE---------------------------- */
+
 CREATE TABLE contest_challenge (
     contest_id VARCHAR(255) NOT NULL,
     challenge_id VARCHAR(255) NOT NULL,
@@ -39,20 +52,6 @@ CREATE TABLE contest_user (
     PRIMARY KEY (contest_id, user_id)
 );
 /* -------------------------CONTESTS SERVICE---------------------------- */
-
-
-/* -------------------------CHALLENGES SERVICE---------------------------- */
-CREATE TABLE challenge (
-    challenge_id VARCHAR(255) NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    description VARCHAR(500) NOT NULL,
-    constraints VARCHAR(500),
-    challenge_template BLOB,
-    difficulty ENUM('EASY', 'MEDIUM', 'HARD') NOT NULL,
-    testcase BLOB NOT NULL,
-    PRIMARY KEY (challenge_id)
-);
-/* -------------------------CHALLENGES SERVICE---------------------------- */
 
 /* -------------------------UPLOAD SERVICE---------------------------- */
 
@@ -88,31 +87,31 @@ CREATE TABLE refresh_token (
 );
 
 
-/* These are some dummy values to be inserted into the database at the time of creation */
-INSERT INTO user VALUES ('asg_usr_01', 'haathim', 'Haathim Munas', 'NORMAL');
-INSERT INTO user VALUES ('asg_usr_02', 'ravin', 'Ravin Perera', 'NORMAL');
-INSERT INTO user VALUES ('asg_usr_03', 'john', 'John Doe', 'NORMAL');
+-- /* These are some dummy values to be inserted into the database at the time of creation */
+-- INSERT INTO user VALUES ('asg_usr_01', 'haathim', 'Haathim Munas', 'NORMAL');
+-- INSERT INTO user VALUES ('asg_usr_02', 'ravin', 'Ravin Perera', 'NORMAL');
+-- INSERT INTO user VALUES ('asg_usr_03', 'john', 'John Doe', 'NORMAL');
 
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_001','Contest One','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_002','Contest Two','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_003','Contest Three','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_004', "Contest Thousand", '2022-01-01 00:00:01', '2024-01-02 00:00:01', "asg_usr_01");
-INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_005', "Contest Thousand", '2024-01-01 00:00:01', '2025-01-02 00:00:01', "asg_usr_01");
+-- INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_001','Contest One','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
+-- INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_002','Contest Two','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
+-- INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_003','Contest Three','2022-01-01 00:00:01', '2024-01-02 00:00:01', 'asg_usr_01');
+-- INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_004', "Contest Thousand", '2022-01-01 00:00:01', '2024-01-02 00:00:01', "asg_usr_01");
+-- INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES ('contest_005', "Contest Thousand", '2024-01-01 00:00:01', '2025-01-02 00:00:01', "asg_usr_01");
 
--- INSERT INTO challenge (title, description, testcase)('Challenge 03', 'Challenge 03 Description....', FILE_READ('file.dat'));
-INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_001','Challenge 03','Challenge constraints.....', 'Challenge 03 Description....', 'EASY',x'89504E47');
-INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_002','Challenge 04','Challenge constraints.....', 'Challenge 04 Description....', 'HARD',x'89504E47');
-INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_003','Challenge 05','Challenge constraints.....', 'Challenge 05 Description....', 'MEDIUM',x'89504E47');
-INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_004','Challenge 06','Challenge constraints.....', 'Challenge 06 Description....', 'MEDIUM',x'89504E47');
-INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_005','Challenge 06','Challenge constraints.....', 'Challenge 07 Description....', 'MEDIUM',x'89504E47');
-INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_006','Challenge 06','Challenge constraints.....', 'Challenge 06 Description....', 'EASY',x'89504E47');
-INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_007','Challenge 06','Challenge constraints.....', 'Challenge 07 Description....', 'HARD',x'89504E47');
+-- -- INSERT INTO challenge (title, description, testcase)('Challenge 03', 'Challenge 03 Description....', FILE_READ('file.dat'));
+-- INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_001','Challenge 03','Challenge constraints.....', 'Challenge 03 Description....', 'EASY',x'89504E47');
+-- INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_002','Challenge 04','Challenge constraints.....', 'Challenge 04 Description....', 'HARD',x'89504E47');
+-- INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_003','Challenge 05','Challenge constraints.....', 'Challenge 05 Description....', 'MEDIUM',x'89504E47');
+-- INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_004','Challenge 06','Challenge constraints.....', 'Challenge 06 Description....', 'MEDIUM',x'89504E47');
+-- INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_005','Challenge 06','Challenge constraints.....', 'Challenge 07 Description....', 'MEDIUM',x'89504E47');
+-- INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_006','Challenge 06','Challenge constraints.....', 'Challenge 06 Description....', 'EASY',x'89504E47');
+-- INSERT INTO challenge (challenge_id, title, description, constraints,  difficulty, testcase) VALUES ('challenge_007','Challenge 06','Challenge constraints.....', 'Challenge 07 Description....', 'HARD',x'89504E47');
 
--- SELECT * FROM Contest WHERE CURRENT_TIMESTAMP() BETWEEN start_time AND end_time;
+-- -- SELECT * FROM Contest WHERE CURRENT_TIMESTAMP() BETWEEN start_time AND end_time;
 
-INSERT INTO contest_challenge (contest_id, challenge_id) VALUES ('contest_001', 'challenge_001');
-INSERT INTO contest_challenge (contest_id, challenge_id) VALUES ('contest_001', 'challenge_002');
-INSERT INTO contest_challenge (contest_id, challenge_id) VALUES ('contest_001', 'challenge_003');
+-- INSERT INTO contest_challenge (contest_id, challenge_id) VALUES ('contest_001', 'challenge_001');
+-- INSERT INTO contest_challenge (contest_id, challenge_id) VALUES ('contest_001', 'challenge_002');
+-- INSERT INTO contest_challenge (contest_id, challenge_id) VALUES ('contest_001', 'challenge_003');
 
 
 

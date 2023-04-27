@@ -1,8 +1,9 @@
 import ballerinax/rabbitmq;
-import wso2/data_model;
+import ballroom/data_model;
 import ballerina/http;
 import ballerina/sql;
 import ballerina/time;
+import ballerina/log;
 
 configurable string USER = ?;
 configurable string PASSWORD = ?;
@@ -10,8 +11,10 @@ configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
 
+configurable string rabbitmqHost = ?;
+configurable int rabbitmqPort = ?;
 
-public type Submission record{
+public type Submission record {
     readonly string submission_id;
     string user_id;
     string contest_id;
@@ -20,71 +23,74 @@ public type Submission record{
     float? score;
 };
 
-public type LeaderboardRow record{
+public type LeaderboardRow record {
     string userId;
     string? name;
-    float score;  
+    float score;
 };
 
-
 // The consumer service listens to the "RequestQueue" queue.
-listener rabbitmq:Listener channelListener= new(rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
-   
+listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
+
 @rabbitmq:ServiceConfig {
     queueName: data_model:EXEC_TO_SCORE_QUEUE_NAME
 }
-
 service rabbitmq:Service on channelListener {
-
-    private final rabbitmq:Client rabbitmqClient;
 
     function init() returns error? {
         // Initiate the RabbitMQ client at the start of the service. This will be used
         // throughout the lifetime of the service.
-        self.rabbitmqClient = check new (rabbitmq:DEFAULT_HOST, rabbitmq:DEFAULT_PORT);
     }
 
     remote function onMessage(data_model:ScoredSubmissionMessage scoredSubmissionEvent) returns error? {
-
         // Throw the error for now
-        _ = check updateScore(scoredSubmissionEvent.score.toString(),scoredSubmissionEvent.subMsg.submissionId);
+        _ = check updateScore(scoredSubmissionEvent.score.toString(), scoredSubmissionEvent.subMsg.submissionId);
         return;
     }
 }
+
 # A service representing a network-accessible API
 # bound to port `9090`.
 # // The service-level CORS config applies globally to each `resource`.
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-        allowCredentials: false,
-        allowHeaders: ["CORELATION_ID"],
+        allowOrigins: ["https://localhost:3000"],
+        allowCredentials: true,
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
 }
-service /score on new http:Listener(9092) {
+@display {
+    label: "Submission Service",
+    id: "SubmissionService"
+}
+service /submissionService on new http:Listener(9092) {
+
+    function init() {
+        log:printInfo("Score service started...");
+    }
 
     # A resource for generating greetings
     #
     # + submissionId - Parameter Description
     # + return - string name with hello message or error
-    isolated resource function get submissionScore/[string submissionId]() returns http:InternalServerError | Payload {
-        do{
-            
-            string | sql:Error result = check getSubmissionScore(submissionId);
-            
-            if(result is sql:Error){
+    isolated resource function get submissions/[string submissionId]/score() returns http:InternalServerError|Payload {
+        do {
+
+            string|sql:Error result = check getSubmissionScore(submissionId);
+
+            if (result is sql:Error) {
                 Payload responsePayload = {
-                    message : "No submission found",
-                    data : ""
+                    message: "No submission found",
+                    data: ""
                 };
                 return responsePayload;
             }
 
             Payload responsePayload = {
-                message : "Submission found",
-                data : result
+                message: "Submission found",
+                data: result
             };
 
             return responsePayload;
@@ -92,69 +98,47 @@ service /score on new http:Listener(9092) {
         on fail {
             return http:INTERNAL_SERVER_ERROR;
         }
-        
+
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
-        }
-    }
-    isolated resource function get submissionList(string userId, string contestId, string challengeId) returns http:InternalServerError|Payload { 
-
-        do{
+    isolated resource function get submissions(string userId, string contestId, string challengeId) returns http:InternalServerError|Payload {
+        do {
             Submission[] list = check getSubmissionList(userId, contestId, challengeId) ?: [];
 
             Payload responsePayload = {
-                message : "Submission found",
-                data : list
+                message: "Submission found",
+                data: list
             };
 
             return responsePayload;
-        }on fail {
+        } on fail {
             return http:INTERNAL_SERVER_ERROR;
         }
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
-        }
-    }
-    isolated resource function get submissionFile/[string submissionId]() returns http:InternalServerError|byte[] { 
+    isolated resource function get submissions/[string submissionId]/solution() returns http:InternalServerError|byte[] {
 
-        do{
+        do {
             byte[] file = check getSubmissionFile(submissionId);
 
             return file;
-        }on fail {
+        } on fail {
             return http:INTERNAL_SERVER_ERROR;
         }
     }
 
-    @http:ResourceConfig {
-        cors: {
-            allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
-            allowCredentials: true,
-            allowHeaders: ["X-Content-Type-Options", "X-PINGOTHER", "Authorization", "Content-Type"]
-        }
-    }
-    isolated resource function get leaderboard/[string contestId]() returns http:InternalServerError| Payload { 
-
-        do{
+    isolated resource function get leaderboard/[string contestId]() returns http:InternalServerError|Payload {
+        do {
             LeaderboardRow[] result = check getLeaderboard(contestId) ?: [];
 
             Payload responsePayload = {
-                message : "Leaderboard created",
-                data : result
+                message: "Leaderboard created",
+                data: result
             };
 
             return responsePayload;
-        }on fail {
+        } on fail error e {
+            log:printError("Error while creating leaderboard", 'error = e);
             return http:INTERNAL_SERVER_ERROR;
         }
     }

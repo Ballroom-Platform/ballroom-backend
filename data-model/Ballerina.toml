@@ -1,8 +1,9 @@
 [package]
-org = "wso2"
+org = "ballroom"
 name = "data_model"
 version = "0.1.0"
-distribution = "2201.2.3"
+distribution = "2201.5.0"
+export = ["data_model.registry", "data_model"]
 
 [build-options]
 observabilityIncluded = true

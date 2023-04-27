@@ -1,14 +1,20 @@
 [package]
-org = "ravin"
+distribution = "2201.5.0"
 name = "sts_service"
+org = "ballroom"
 version = "0.1.0"
-distribution = "2201.2.3"
 
 [build-options]
 observabilityIncluded = true
 
 [[dependency]]
-org = "wso2"
 name = "data_model"
+org = "ballroom"
+repository = "local"
 version = "0.1.0"
-repository="local"
+
+[[tool.openapi]]
+id = "user-service"
+file = "../user-service/openapi.yaml"
+#package = "user-service"
+#mode = "client" #optional - default is "client"
