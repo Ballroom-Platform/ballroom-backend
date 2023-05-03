@@ -98,6 +98,7 @@ service /contestService on new http:Listener(9098) {
     }
 
     resource function post contests(@http:Payload NewContest newContest) returns string|int|http:InternalServerError|error {
+        log:printInfo("POST contests invoked, REQ: " + newContest.toBalString());
         string generatedContestId = "contest_" + uuid:createType1AsString();
         data_model:Contest newContestToAdd = {
             contestId: generatedContestId,
@@ -237,16 +238,11 @@ function getContestsWithStatus(string status) returns data_model:Contest[]|sql:E
 }
 
 function addContest(data_model:Contest newContest) returns string|int|error {
-    string generatedContestId = "contest-" + uuid:createType1AsString();
-    sql:ExecutionResult execRes = check db->execute(`
-        INSERT INTO contest (contest_id, title, start_time, end_time, moderator) VALUES (${generatedContestId},${newContest.title}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
+    sql:ExecutionResult _ = check db->execute(`
+        INSERT INTO contest (contest_id, title, description, start_time, end_time, moderator) VALUES (${newContest.contestId},${newContest.title}, ${newContest.description}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
     `);
-    string|int? lastInsertId = execRes.lastInsertId;
-    if lastInsertId is () {
-        return error("Datbase does not support lastInsertId.");
-    } else {
-        return lastInsertId;
-    }
+    string lastInsertId = newContest.contestId;
+    return lastInsertId;
 }
 
 function getContest(string contestId) returns data_model:Contest|sql:Error {

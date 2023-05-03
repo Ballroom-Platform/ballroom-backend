@@ -173,12 +173,14 @@ org = "ballroom"
 name = "data_model"
 version = "0.1.0"
 dependencies = [
+	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "sql"},
 	{org = "ballerina", name = "time"},
 	{org = "ballerinai", name = "observe"}
 ]
 modules = [
-	{org = "ballroom", packageName = "data_model", moduleName = "data_model"}
+	{org = "ballroom", packageName = "data_model", moduleName = "data_model"},
+	{org = "ballroom", packageName = "data_model", moduleName = "data_model.registry"}
 ]
 
 [[package]]

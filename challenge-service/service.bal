@@ -14,6 +14,7 @@ configurable string PASSWORD = ?;
 configurable string HOST = ?;
 configurable int PORT = ?;
 configurable string DATABASE = ?;
+configurable string storageUrl = ?;
 
 type UpdatedChallenge record {
     string title;
@@ -108,9 +109,9 @@ service /challengeService on new http:Listener(9096) {
                 string key = item.getContentDisposition().name;
                 stream<byte[], io:Error?> streamer = check item.getByteStream();
                 if key.equalsIgnoreCaseAscii("testCase") {
-                    io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/" + fileName + ".zip", streamer);
+                    io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream(storageUrl + "/" + fileName + ".zip", streamer);
                 } else {
-                    io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/" + templateFileName + ".zip", streamer);
+                    io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream(storageUrl + "/" + templateFileName + ".zip", streamer);
                 }
 
                 check streamer.close();
@@ -118,8 +119,8 @@ service /challengeService on new http:Listener(9096) {
 
         }
 
-        byte[] & readonly fileReadBytes = check io:fileReadBytes("/tmp/" + fileName + ".zip");
-        byte[] & readonly templateFileReadBytes = check io:fileReadBytes("/tmp/" + templateFileName + ".zip");
+        byte[] & readonly fileReadBytes = check io:fileReadBytes(storageUrl + "/" + fileName + ".zip");
+        byte[] & readonly templateFileReadBytes = check io:fileReadBytes(storageUrl + "/" + templateFileName + ".zip");
         string|int challengeId = check addChallenge(newChallenge, fileReadBytes, templateFileReadBytes, fileName, ".zip");
         return challengeId;
 
@@ -179,10 +180,7 @@ isolated function addChallenge(data_model:Challenge newChallenge, byte[] testcas
     sql:ExecutionResult execRes = check db->execute(`
         INSERT INTO challenge (challenge_id, title, description, constraints, difficulty, testcase, challenge_template) VALUES (${generatedChallengeId},${newChallenge.title}, ${newChallenge.description}, ${newChallenge.constraints}, ${newChallenge.difficulty}, ${testcaseFile}, ${templateFile})
     `);
-    string|int? lastInsertId = execRes.lastInsertId;
-    if lastInsertId is () {
-        return error("DATABASE does not support last insert Id!");
-    }
+    string lastInsertId = generatedChallengeId;
     return lastInsertId;
 }
 
