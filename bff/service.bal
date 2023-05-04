@@ -23,7 +23,7 @@ configurable string submissionServiceUrl = ?;
     cors: {
         allowOrigins: ["https://localhost:3000"],
         allowCredentials: true,
-        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "authorization"],
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "authorization", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }

@@ -50,7 +50,7 @@ final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD
     cors: {
         allowOrigins: ["https://localhost:3000", "http://localhost:9099"],
         allowCredentials: true,
-        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type"],
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
