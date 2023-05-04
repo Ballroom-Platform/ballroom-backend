@@ -23,7 +23,7 @@ configurable string submissionServiceUrl = ?;
     cors: {
         allowOrigins: ["https://localhost:3000"],
         allowCredentials: true,
-        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "authorization"],
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "authorization", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
@@ -34,25 +34,25 @@ service / on new http:Listener(9099) {
         id: "ContestService"
     }
     private final http:Client contestService;
-    
+
     @display {
         label: "Challenge Service",
         id: "ChallengeService"
     }
     private final http:Client challengeService;
-    
+
     @display {
         label: "Upload Service",
         id: "UploadService"
     }
     private final http:Client uploadService;
-    
+
     @display {
         label: "User Service",
         id: "UserService"
     }
     private final http:Client userService;
-    
+
     @display {
         label: "Submission Service",
         id: "SubmissionService"
