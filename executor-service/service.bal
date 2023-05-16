@@ -2,23 +2,18 @@ import ballerina/io;
 import ballerinax/rabbitmq;
 import ballerina/file;
 import ballroom/data_model;
-import ballerinax/mysql;
-import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 import ballerina/regex;
 import ballerina/log;
+import ballroom/entities;
 import executor_service.utils as utils;
-
-configurable string USER = ?;
-configurable string PASSWORD = ?;
-configurable string HOST = ?;
-configurable int PORT = ?;
-configurable string DATABASE = ?;
+import ballerina/persist;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
 
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
+entities:Client db = check new ();
 
 // @display {
 //     label: "Executor Service",
@@ -59,10 +54,12 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     string fileNameWithExtension = submissionEvent.fileName + submissionEvent.fileExtension;
 
     // get the file
-    string storedLocation = check getAndStoreFile(basePath, submissionEvent.fileName, submissionEvent.fileExtension, submissionEvent.submissionId);
+    string storedLocation = check getAndStoreFile(basePath, submissionEvent.fileName, 
+        submissionEvent.fileExtension, submissionEvent.submissionId);
 
     // unzip the submissionZip
-    string[] unzipArguments = ["unzip " + basePath + "/" + fileNameWithExtension + " -d " + basePath + "/" + submissionEvent.fileName + "/"];
+    string[] unzipArguments = ["unzip " + basePath + "/" + fileNameWithExtension + " -d " + 
+        basePath + "/" + submissionEvent.fileName + "/"];
     _ = check executeCommand(unzipArguments);
 
     // replace the test cases
@@ -72,7 +69,8 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     // get the test case file and store in the same location
     () _ = check getAndStoreTestCase(submissionEvent.challengeId, storedLocation);
 
-    string[] testUnzipArguments = ["unzip " + basePath + "/" + submissionEvent.fileName + "/testsZip" + " -d " + basePath + "/" + submissionEvent.fileName + "/tests/"];
+    string[] testUnzipArguments = ["unzip " + basePath + "/" + submissionEvent.fileName + "/testsZip" + 
+        " -d " + basePath + "/" + submissionEvent.fileName + "/tests/"];
     _ = check executeCommand(testUnzipArguments);
 
     string[] testCommand = ["cd " + storedLocation + " && bal test"];
@@ -133,15 +131,30 @@ function getTestDirPath(string challengeId) returns string {
     return "./challengetests/tests/";
 }
 
-function getAndStoreFile(string basePath, string fileName, string fileExtension, string submissionId) returns string|error {
-    byte[] fileFromDB = check getFileFromDB(submissionId);
+function getAndStoreFile(string basePath, string fileName, string fileExtension, string submissionId) 
+        returns string|error {
+    record {|
+        record {|
+            byte[] file;
+        |} submittedfile;
+    |}|persist:Error fileRecord = db->/submissions/[submissionId];
+    if fileRecord is error {
+        return fileRecord;
+    }
+
+    byte[] fileFromDB = fileRecord.submittedfile.file;
     string filePath = check file:joinPath(basePath, fileName + fileExtension);
     check io:fileWriteBytes(filePath, fileFromDB);
     return file:joinPath(basePath, fileName);
 }
 
 function getAndStoreTestCase(string challengeId, string location) returns error? {
-    byte[] fileFromDB = check getTestCaseFromDB(challengeId);
+    record {|byte[] testCasesFile;|}|persist:Error testCaseRecord = db->/challenges/[challengeId];
+    if testCaseRecord is error {
+        return testCaseRecord;
+    }
+
+    byte[] fileFromDB = testCaseRecord.testCasesFile;
     check io:fileWriteBytes(location + "/testsZip", fileFromDB);
 }
 
@@ -180,20 +193,3 @@ function executeCommand(string[] arguments, string? workdingDir = ()) returns st
     return output;
 }
 
-isolated function getFileFromDB(string submissionId) returns byte[]|error {
-    final mysql:Client dbClient = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
-    byte[] submissionFileBlob = check dbClient->queryRow(
-        `SELECT submission_file FROM submission_file_table WHERE submission_id = ${submissionId}`
-    );
-    check dbClient.close();
-    return submissionFileBlob;
-}
-
-isolated function getTestCaseFromDB(string challengeId) returns byte[]|error {
-    final mysql:Client dbClient = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
-    byte[] testCaseFileBlob = check dbClient->queryRow(
-        `SELECT testcase FROM challenge WHERE challenge_id = ${challengeId}`
-    );
-    check dbClient.close();
-    return testCaseFileBlob;
-}
