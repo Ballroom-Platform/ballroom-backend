@@ -430,26 +430,10 @@ dependencies = [
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "rabbitmq"},
 	{org = "ballroom", name = "data_model"},
-	{org = "ballroom", name = "entities"},
-	{org = "samjs", name = "ballroom.data_model"}
+	{org = "ballroom", name = "entities"}
 ]
 modules = [
 	{org = "ballroom", packageName = "score_service", moduleName = "score_service"},
 	{org = "ballroom", packageName = "score_service", moduleName = "score_service.user"}
-]
-
-[[package]]
-org = "samjs"
-name = "ballroom.data_model"
-version = "0.1.5"
-dependencies = [
-	{org = "ballerina", name = "io"},
-	{org = "ballerina", name = "sql"},
-	{org = "ballerina", name = "time"},
-	{org = "ballerinai", name = "observe"}
-]
-modules = [
-	{org = "samjs", packageName = "ballroom.data_model", moduleName = "ballroom.data_model"},
-	{org = "samjs", packageName = "ballroom.data_model", moduleName = "ballroom.data_model.registry"}
 ]
 

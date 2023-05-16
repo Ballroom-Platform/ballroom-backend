@@ -1,8 +1,12 @@
-USER="enter username here"
-PASSWORD="enter password here"
-HOST="enter host here"
-PORT="enter port as an integer here"
-DATABASE="ballroom"
+tokenAudience = "ballroomBFF"
+tokenIssuer = "ballroomSTS"
 
-tokenIssuer="ballroomSTS"
-tokenAudience="ballroomBFF"
+userServiceUrl = "http://localhost:9095/userService"
+idpUrl = "https://api.asgardeo.io/t/ravin/oauth2"
+
+[ballroom.entities]
+host = "localhost"
+port = 3306
+user = "ballroom_sql"
+password = "ballroomadmin123"
+database = "ballroomdb"

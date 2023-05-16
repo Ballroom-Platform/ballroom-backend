@@ -2,6 +2,8 @@ import ballroom/data_model;
 import score_service.user;
 import ballroom/entities;
 import ballerina/persist;
+import ballroom/data_model.registry;
+
 
 public type Payload record {
     string message;
@@ -14,7 +16,7 @@ final entities:Client db = check new ();
     label: "User Service",
     id: "UserService"
 }
-final user:Client userService = check new ();
+final user:Client userService = check new (serviceUrl = check registry:lookup("\"ballroom/UserService\""));
 
 function getSubmissionList(string userId, string contestId, string challengeId) returns Submission[]|persist:Error? {
     stream<entities:Submission, persist:Error?> submissionStream = db->/submissions;
