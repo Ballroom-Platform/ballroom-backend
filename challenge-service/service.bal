@@ -1,19 +1,12 @@
 import ballerina/http;
 import ballroom/data_model;
-import ballerinax/mysql;
-import ballerina/sql;
-import ballerinax/mysql.driver as _;
 import ballerina/io;
 import ballerina/mime;
-import ballerina/regex;
 import ballerina/uuid;
 import ballerina/log;
-
-configurable string USER = ?;
-configurable string PASSWORD = ?;
-configurable string HOST = ?;
-configurable int PORT = ?;
-configurable string DATABASE = ?;
+import ballroom/entities;
+import ballerina/persist;
+import ballerina/time;
 
 type UpdatedChallenge record {
     string title;
@@ -21,8 +14,6 @@ type UpdatedChallenge record {
     string constraints;
     string difficulty;
 };
-
-final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
 
 # A service representing a network-accessible API
 # bound to port `9096`.
@@ -32,7 +23,7 @@ final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD
 }
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+        allowOrigins: ["https://localhost:3000"],
         allowCredentials: true,
         allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
@@ -40,171 +31,194 @@ final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD
     }
 }
 service /challengeService on new http:Listener(9096) {
+    private final entities:Client db;
 
-    function init() {
+    function init() returns error? {
+        self.db = check new ();
         log:printInfo("Challenge service started...");
     }
 
-    resource function get challenges/[string challengeId]() returns data_model:Challenge|http:InternalServerError|http:NotFound|error {
-        data_model:Challenge|error challenge = getChallenge(challengeId);
-        if challenge is sql:Error {
-            if challenge is sql:NoRowsError {
-                return http:NOT_FOUND;
-            }
-            return http:INTERNAL_SERVER_ERROR;
+    resource function get challenges/[string challengeId]()
+            returns data_model:Challenge|http:InternalServerError|http:NotFound {
+        entities:Challenge|persist:Error entityChallenge = self.db->/challenges/[challengeId];
+        if entityChallenge is persist:InvalidKeyError {
+            return http:NOT_FOUND;
+        } else if entityChallenge is persist:Error {
+            log:printError("Error while retrieving challenge by id", challengeId = challengeId,
+                'error = entityChallenge);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving challenge by ${challengeId}`
+                }
+            };
+        } else {
+            return toDataModelChallenge(entityChallenge);
         }
-        return challenge;
     }
 
-    resource function get challenges(string difficulty) returns data_model:Challenge[]|http:InternalServerError|http:BadRequest|error {
+    resource function get challenges(string difficulty)
+            returns data_model:Challenge[]|http:InternalServerError|http:BadRequest {
         if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
             return http:BAD_REQUEST;
         }
 
-        data_model:Challenge[]|sql:Error challengesWithDifficulty = getChallengesWithDifficulty(difficulty);
-        if challengesWithDifficulty is data_model:Challenge[] {
-            return challengesWithDifficulty;
-        } else if challengesWithDifficulty is sql:Error {
-            return http:INTERNAL_SERVER_ERROR;
+        stream<entities:Challenge, persist:Error?> challengeStream = self.db->/challenges;
+        entities:Challenge[]|persist:Error challenges = from var challenge in challengeStream
+            where challenge.difficulty == difficulty
+            select challenge;
+
+        if challenges is persist:Error {
+            log:printError("Error while retrieving challenges", 'error = challenges);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving challenges`
+                }
+            };
+        } else {
+            data_model:Challenge[] dataModelChallenges = from var challenge in challenges
+                select toDataModelChallenge(challenge);
+            return dataModelChallenges;
         }
     }
 
     // OpenAPI Tool Bug:https://github.com/ballerina-platform/openapi-tools/issues/1314  returns byte[]|error
-    resource function get challenges/[string challengeId]/template() returns @http:Payload {mediaType: "application/octet-stream"} http:Response|http:InternalServerError|http:NotFound|error {
-        byte[]|sql:Error template = getTemplate(challengeId);
-        if template is sql:Error {
-            if template is sql:NoRowsError {
-                return http:NOT_FOUND;
-            }
-            return http:INTERNAL_SERVER_ERROR;
+    resource function get challenges/[string challengeId]/template()
+            returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
+        http:InternalServerError|http:NotFound {
+        record {|byte[] templateFile;|}|persist:Error templateFileRecord = self.db->/challenges/[challengeId];
+        if templateFileRecord is persist:InvalidKeyError {
+            return http:NOT_FOUND;
+        } else if templateFileRecord is persist:Error {
+            log:printError("Error while retrieving challenge template by id", challengeId = challengeId,
+                'error = templateFileRecord);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving template file by the challenge '${challengeId}'`
+                }
+            };
+        } else {
+            http:Response response = new;
+            response.setBinaryPayload(templateFileRecord.templateFile);
+            return response;
         }
-        http:Response response = new;
-        response.setBinaryPayload(template);
-        return response;
     }
 
-    resource function post challenges(http:Request request) returns string|int|error {
-        io:println("RECVD REQ");
+    resource function post challenges(http:Request request)
+            returns string|http:BadRequest|http:InternalServerError|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
-        io:println(request.getContentType());
-
-        data_model:Challenge newChallenge = {title: "", challengeId: "", description: "", difficulty: "HARD", testCase: [], template: [], constraints: ""};
-
-        string fileName = "testCaseFile";
-        string templateFileName = "templateFile";
-        foreach mime:Entity item in bodyParts {
-            // check if the body part is a zipped file or normal text
-            io:print("content ytpy eis ...");
-            io:println(item.getContentType());
-            if item.getContentType().length() == 0 {
-                string contentDispositionString = item.getContentDisposition().toString();
-                // get the relevant key for the value provided
-                string[] keyArray = regex:split(contentDispositionString, "name=\"");
-                string key = regex:replaceAll(keyArray[1], "\"", "");
-                newChallenge[key] = check item.getText();
-            }
-            // body part is a zipped file
-            else {
-                string key = item.getContentDisposition().name;
-                stream<byte[], io:Error?> streamer = check item.getByteStream();
-                if key.equalsIgnoreCaseAscii("testCase") {
-                    io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/" + fileName + ".zip", streamer);
-                } else {
-                    io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/" + templateFileName + ".zip", streamer);
+        // Check if the request has 6 body parts
+        if bodyParts.length() != 6 {
+            return <http:BadRequest>{
+                body: {
+                    message: string `Expects 6 bodyparts but found ${bodyParts.length()}`
                 }
-
-                check streamer.close();
-            }
-
+            };
         }
 
-        byte[] & readonly fileReadBytes = check io:fileReadBytes("/tmp/" + fileName + ".zip");
-        byte[] & readonly templateFileReadBytes = check io:fileReadBytes("/tmp/" + templateFileName + ".zip");
-        string|int challengeId = check addChallenge(newChallenge, fileReadBytes, templateFileReadBytes, fileName, ".zip");
-        return challengeId;
+        // Creates a map with the body part name as the key and the body part as the value
+        map<mime:Entity> bodyPartMap = {};
+        foreach mime:Entity entity in bodyParts {
+            bodyPartMap[entity.getContentDisposition().name] = entity;
+        }
 
+        // Check if all the required body parts are present
+        if !bodyPartMap.hasKey("title") || !bodyPartMap.hasKey("description") ||
+            !bodyPartMap.hasKey("constraints") || !bodyPartMap.hasKey("difficulty") ||
+            !bodyPartMap.hasKey("testCase") || !bodyPartMap.hasKey("template") {
+            return <http:BadRequest>{
+                body: {
+                    message: string `Expects 6 bodyparts with names 'title', 'description', 'constraints', 'difficulty', 'testCase' and 'template'`
+                }
+            };
+        }
+
+        entities:Challenge entityChallenge = {
+            id: uuid:createType4AsString(),
+            title: check bodyPartMap.get("title").getText(),
+            description: check bodyPartMap.get("description").getText(),
+            difficulty: check bodyPartMap.get("difficulty").getText(),
+            constraints: check bodyPartMap.get("constraints").getText(),
+            testCasesFile: check readEntityToByteArray("testCase", bodyPartMap),
+            templateFile: check readEntityToByteArray("template", bodyPartMap),
+            createdTime: time:utcToCivil(time:utcNow())
+        };
+
+        string[]|persist:Error insertedIds = self.db->/challenges.post([entityChallenge]);
+        if insertedIds is persist:Error {
+            log:printError("Error while adding contest", 'error = insertedIds);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while adding contest`
+                }
+            };
+        } else {
+            return insertedIds[0];
+        }
     }
 
     // TODO: Why are we returning a string here?
     // TODO: Shouldn't they be errors?
-    resource function put challenges/[string challengeId](UpdatedChallenge updatedChallenge) returns UpdatedChallenge|string|http:InternalServerError|http:NotFound|error {
-        error? challenge = updateChallenge(challengeId, updatedChallenge);
-        if challenge is error {
-            if challenge is sql:Error {
-                return http:INTERNAL_SERVER_ERROR;
-            }
+    resource function put challenges/[string challengeId](UpdatedChallenge updatedChallenge) 
+            returns UpdatedChallenge|http:InternalServerError|http:NotFound|error {
+        entities:ChallengeUpdate challengeUpdate = {
+            title: updatedChallenge.title,
+            description: updatedChallenge.description,
+            difficulty: updatedChallenge.difficulty,
+            constraints: updatedChallenge.constraints
+        };
+
+        entities:Challenge|persist:Error challenge = self.db->/challenges/[challengeId].put(challengeUpdate);
+        if challenge is persist:InvalidKeyError {
             return http:NOT_FOUND;
+        } else if challenge is persist:Error {
+            log:printError("Error while updating challenge by id", challengeId = challengeId, 'error = challenge);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while updating challenge by ${challengeId}`
+                }
+            };
+        } else {
+            updatedChallenge["challengeId"] = challengeId;
+            return updatedChallenge;
         }
-        updatedChallenge["challengeId"] = challengeId;
-        return updatedChallenge;
     }
 
-    resource function delete challenges/[string challengeId]() returns http:InternalServerError|http:STATUS_NOT_FOUND|http:STATUS_OK {
-        error? challenge = deleteChallenge(challengeId);
-        if challenge is error {
-            if challenge is sql:Error {
-                return http:INTERNAL_SERVER_ERROR;
-            }
-            return http:STATUS_NOT_FOUND;
+    resource function delete challenges/[string challengeId]() 
+            returns http:InternalServerError|http:NotFound|http:Ok {
+        entities:Challenge|persist:Error deletedChallenge = self.db->/challenges/[challengeId].delete;
+        if deletedChallenge is persist:InvalidKeyError {
+            return http:NOT_FOUND;
+        } else if deletedChallenge is persist:Error {
+            log:printError("Error while deleting challenge by id", challengeId = challengeId, 'error = deletedChallenge);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while deleting challenge by ${challengeId}`
+                }
+            };
+        } else {
+            return http:OK;
         }
-
-        return http:STATUS_OK;
-
     }
 }
 
-isolated function deleteChallenge(string challengeId) returns error? {
-    sql:ExecutionResult execRes = check db->execute(`
-        DELETE FROM challenge WHERE challenge_id = ${challengeId};
-    `);
-    if execRes.affectedRowCount == 0 {
-        return error("INVALID CHALLENGE_ID.");
-    }
-    return;
+function readEntityToByteArray(string entityName, map<mime:Entity> entityMap) returns byte[]|error {
+    stream<byte[], io:Error?> testCaseStream = check entityMap.get(entityName).getByteStream();
+    byte[] testCaseFile = [];
+    check from var bytes in testCaseStream
+        do {
+            testCaseFile.push(...bytes);
+        };
+
+    return testCaseFile;
 }
 
-isolated function updateChallenge(string challengeId, UpdatedChallenge updatedChallenge) returns error? {
-    sql:ExecutionResult execRes = check db->execute(`
-        UPDATE challenge SET title = ${updatedChallenge.title}, description = ${updatedChallenge.description}, constraints = ${updatedChallenge.constraints}, difficulty = ${updatedChallenge.difficulty} WHERE challenge_id = ${challengeId};
-    `);
-    if execRes.affectedRowCount == 0 {
-        return error("INVALID CHALLENGE_ID.");
-    }
-    return;
-}
-
-isolated function addChallenge(data_model:Challenge newChallenge, byte[] testcaseFile, byte[] templateFile, string fileName, string fileExtension) returns string|int|error {
-    string generatedChallengeId = "challenge-" + uuid:createType1AsString();
-
-    sql:ExecutionResult execRes = check db->execute(`
-        INSERT INTO challenge (challenge_id, title, description, constraints, difficulty, testcase, challenge_template) VALUES (${generatedChallengeId},${newChallenge.title}, ${newChallenge.description}, ${newChallenge.constraints}, ${newChallenge.difficulty}, ${testcaseFile}, ${templateFile})
-    `);
-    string|int? lastInsertId = execRes.lastInsertId;
-    if lastInsertId is () {
-        return error("DATABASE does not support last insert Id!");
-    }
-    return lastInsertId;
-}
-
-isolated function getChallenge(string challengeId) returns data_model:Challenge|sql:Error {
-    data_model:Challenge|sql:Error result = db->queryRow(`SELECT * FROM challenge WHERE challenge_id = ${challengeId}`);
-    return result;
-
-}
-
-isolated function getChallengesWithDifficulty(string difficulty) returns data_model:Challenge[]|sql:Error {
-    stream<data_model:Challenge, sql:Error?> result = db->query(`SELECT * FROM challenge WHERE difficulty = ${difficulty}`);
-    data_model:Challenge[]|sql:Error listOfChallenges = from data_model:Challenge challenge in result
-        select challenge;
-
-    return listOfChallenges;
-
-}
-
-isolated function getTemplate(string challengeId) returns byte[]|sql:Error {
-    final mysql:Client dbClient = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
-    byte[]|sql:Error result = dbClient->queryRow(`SELECT challenge_template FROM challenge WHERE challenge_id = ${challengeId}`);
-    check dbClient.close();
-    return result;
-
-}
+isolated function toDataModelChallenge(entities:Challenge challenge) returns data_model:Challenge =>
+{
+    title: challenge.title,
+    challengeId: challenge.id,
+    description: challenge.description,
+    difficulty: challenge.difficulty,
+    testCase: challenge.testCasesFile,
+    template: challenge.templateFile,
+    constraints: challenge.constraints
+};
