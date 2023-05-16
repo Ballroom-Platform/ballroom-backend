@@ -1,0 +1,5 @@
+challengeServiceUrl = "http://localhost:9096"
+contestServiceUrl = "http://localhost:9098"
+uploadServiceUrl = "http://localhost:9094"
+userServiceUrl = "http://localhost:9095"
+submissionServiceUrl = "http://localhost:9092"
