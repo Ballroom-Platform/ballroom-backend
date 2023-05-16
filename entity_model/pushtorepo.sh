@@ -1,3 +1,3 @@
 #!/bin/bash
 
-bal pack && bal push --repository local
+bal persist generate && bal pack && bal push --repository local

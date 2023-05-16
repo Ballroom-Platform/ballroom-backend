@@ -11,7 +11,7 @@ After cloning the repository, switch to "m2" branch and follow the steps provide
 > Note: Set necessary permissions if needed using the following command and retry step 1.
 `chmod +x pushtorepo.sh`
 
-2.) Push the entity model to the local repository by executing the pushtorepo.sh file in entity model package directory using the following command, 
+2.) Generate the client code for the entity model and push it to the local repository by executing the pushtorepo.sh file in entity model package directory using the following command, 
 `./pushtorepo`
 
 > Note: Set necessary permissions if needed using the following command and retry step 1.
