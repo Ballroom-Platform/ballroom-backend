@@ -55,7 +55,7 @@ service rabbitmq:Service on channelListener {
     cors: {
         allowOrigins: ["https://localhost:3000"],
         allowCredentials: true,
-        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type"],
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }

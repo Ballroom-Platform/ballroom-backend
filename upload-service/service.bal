@@ -25,7 +25,7 @@ final entities:Client db = check new ();
     cors: {
         allowOrigins: ["https://localhost:3000"],
         allowCredentials: false,
-        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type"],
+        allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }

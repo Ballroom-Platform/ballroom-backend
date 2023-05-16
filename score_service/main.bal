@@ -4,7 +4,6 @@ import ballroom/entities;
 import ballerina/persist;
 import ballroom/data_model.registry;
 
-
 public type Payload record {
     string message;
     anydata data;
