@@ -254,6 +254,19 @@ dependencies = [
 
 [[package]]
 org = "ballerina"
+name = "persist"
+version = "0.3.1"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "sql"},
+	{org = "ballerina", name = "time"}
+]
+modules = [
+	{org = "ballerina", packageName = "persist", moduleName = "persist"}
+]
+
+[[package]]
+org = "ballerina"
 name = "regex"
 version = "1.4.2"
 dependencies = [
@@ -270,9 +283,6 @@ dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.object"},
 	{org = "ballerina", name = "time"}
-]
-modules = [
-	{org = "ballerina", packageName = "sql", moduleName = "sql"}
 ]
 
 [[package]]
@@ -353,17 +363,11 @@ dependencies = [
 	{org = "ballerina", name = "sql"},
 	{org = "ballerina", name = "time"}
 ]
-modules = [
-	{org = "ballerinax", packageName = "mysql", moduleName = "mysql"}
-]
 
 [[package]]
 org = "ballerinax"
 name = "mysql.driver"
 version = "1.4.1"
-modules = [
-	{org = "ballerinax", packageName = "mysql.driver", moduleName = "mysql.driver"}
-]
 
 [[package]]
 org = "ballerinax"
@@ -397,21 +401,36 @@ modules = [
 
 [[package]]
 org = "ballroom"
+name = "entities"
+version = "0.1.0"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "persist"},
+	{org = "ballerina", name = "time"},
+	{org = "ballerinai", name = "observe"},
+	{org = "ballerinax", name = "mysql"},
+	{org = "ballerinax", name = "mysql.driver"}
+]
+modules = [
+	{org = "ballroom", packageName = "entities", moduleName = "entities"}
+]
+
+[[package]]
+org = "ballroom"
 name = "score_service"
 version = "0.1.0"
 dependencies = [
 	{org = "ballerina", name = "http"},
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "log"},
-	{org = "ballerina", name = "sql"},
+	{org = "ballerina", name = "persist"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "time"},
 	{org = "ballerina", name = "url"},
 	{org = "ballerinai", name = "observe"},
-	{org = "ballerinax", name = "mysql"},
-	{org = "ballerinax", name = "mysql.driver"},
 	{org = "ballerinax", name = "rabbitmq"},
 	{org = "ballroom", name = "data_model"},
+	{org = "ballroom", name = "entities"},
 	{org = "samjs", name = "ballroom.data_model"}
 ]
 modules = [
