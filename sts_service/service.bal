@@ -4,12 +4,6 @@ import ballroom/data_model;
 import ballerina/log;
 import ballerina/io;
 
-configurable string USER = ?;
-configurable string PASSWORD = ?;
-configurable string HOST = ?;
-configurable int PORT = ?;
-configurable string DATABASE = ?;
-
 configurable string tokenIssuer = ?;
 configurable string tokenAudience = ?;
 
@@ -20,7 +14,6 @@ public type Payload record {
 public type Data record {
     string accessToken;
 };
-
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -43,7 +36,8 @@ service /sts on new http:Listener(9093) {
         log:printInfo("STS service started...");
     }
     
-    isolated resource function get accessToken(@http:Header string Authorization) returns http:Forbidden | http:Response | http:InternalServerError {
+    resource function get accessToken(@http:Header string Authorization) 
+            returns http:Forbidden | http:Response | http:InternalServerError {
         log:printInfo("Access token request received");
         do{
             json idpResult = check verifyIDPToken(Authorization);
@@ -67,7 +61,8 @@ service /sts on new http:Listener(9093) {
                 };
                 log:printInfo("User: ", user= user);
 
-                _ = check userClient->post("/user", headers = {"Content-Type":"application/json"}, message = user.toJson(), targetType = json);
+                _ = check userClient->post("/user", headers = {"Content-Type":"application/json"}, 
+                    message = user.toJson(), targetType = json);
                 log:printInfo("User added to the database");        
 
                 userData = check getUserData(userID);
@@ -114,7 +109,8 @@ service /sts on new http:Listener(9093) {
         
     }
 
-    isolated resource function get refreshToken(http:Request request) returns http:Unauthorized | http:Forbidden | http:Response | http:InternalServerError{
+    resource function get refreshToken(http:Request request) 
+            returns http:Unauthorized | http:Forbidden | http:Response | http:InternalServerError{
         http:Response response = new;
         do{
             http:Cookie[] cookies = request.getCookies();

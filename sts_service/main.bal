@@ -1,11 +1,11 @@
 import ballerina/jwt;
 import ballerina/http;
-import ballerinax/mysql;
-import ballerina/sql;
 import ballerina/regex;
-import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
 import ballerina/log;
 import sts_service.user;
+import ballroom/entities;
+import ballerina/uuid;
+import ballerina/persist;
 
 configurable string userServiceUrl = ?;
 configurable string idpUrl = ?;
@@ -21,7 +21,7 @@ final user:Client userService = check new (serviceUrl = userServiceUrl);
     id: "IDPService"
 }
 final http:Client idp = check new (idpUrl, config = {httpVersion: "1.1"});
-final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
+final entities:Client db = check new ();
 
 public isolated function verifyIDPToken(string header) returns json|error {
     log:printInfo("Verifying IDP Token");
@@ -76,7 +76,8 @@ public isolated function generateToken(json userData, decimal expTime) returns s
     return jwt:issue(issueConfig);
 }
 
-public isolated function validateToken(string refreshToken, string storedUserID) returns jwt:Payload|http:Unauthorized|http:Forbidden {
+public isolated function validateToken(string refreshToken, string storedUserID) 
+        returns jwt:Payload|http:Unauthorized|http:Forbidden {
     jwt:ValidatorConfig config = {
         issuer: tokenIssuer,
         audience: tokenAudience,
@@ -98,11 +99,31 @@ public isolated function validateToken(string refreshToken, string storedUserID)
     return payload;
 }
 
-public isolated function getRefreshTokenUser(string refreshToken) returns string|error {
-    string|sql:Error result = db->queryRow(`SELECT user_id FROM refresh_token WHERE refresh_token = ${refreshToken};`);
-    return result;
+public function getRefreshTokenUser(string refreshToken) returns string|error {
+    stream<entities:RefreshToken, persist:Error?> rtStream = db->/refreshtokens;
+    string[]|persist:Error userIds = from var rt in rtStream
+        where rt.token == refreshToken
+        select rt.userId;
+
+    if userIds is persist:Error {
+        return error("Error while getting userId for the refreshtoken", cause = userIds);
+    } else if userIds.length() == 0 {
+        return error("No user found for the refreshtoken");
+    } else {
+        return userIds[0];
+    }
 }
 
-public isolated function storeRefreshTokenUser(string refreshToken, string userID) returns error? {
-    _ = check db->execute(`INSERT INTO refresh_token (user_id, refresh_token) VALUES (${userID}, ${refreshToken});`);
+public function storeRefreshTokenUser(string refreshToken, string userId) returns error? {
+    string[]|persist:Error unionResult = db->/refreshtokens.post([
+        {
+            id: uuid:createType4AsString(),
+            userId: userId,
+            token: refreshToken
+        }
+    ]);
+
+    if unionResult is persist:Error {
+        return error("Error while storing the refreshtoken for the userId", userId = userId, cause = unionResult);
+    }
 }
