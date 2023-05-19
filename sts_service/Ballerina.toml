@@ -13,8 +13,8 @@ org = "ballroom"
 repository = "local"
 version = "0.1.0"
 
-[[tool.openapi]]
-id = "user-service"
-file = "../user-service/openapi.yaml"
-#package = "user-service"
-#mode = "client" #optional - default is "client"
+[[dependency]]
+org = "ballroom"
+name = "entities"
+version = "0.1.0"
+repository="local"

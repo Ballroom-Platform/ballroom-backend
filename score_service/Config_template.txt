@@ -1,5 +1,12 @@
-USER="enter username here"
-PASSWORD="enter password here"
-HOST="enter host here"
-PORT="enter port as an integer here"
-DATABASE="ballroom"
+rabbitmqHost = "localhost"
+rabbitmqPort = 5672
+
+[ballroom.data_model.registry.serviceIds]
+"ballroom/UserService" = "http://localhost:9095/userService"
+
+[ballroom.entities]
+host = "localhost"
+port = 3306
+user = "ballroom_sql"
+password = "ballroomadmin123"
+database = "ballroomdb"

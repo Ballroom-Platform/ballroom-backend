@@ -12,3 +12,9 @@ name = "data_model"
 org = "ballroom"
 repository = "local"
 version = "0.1.0"
+
+[[dependency]]
+org = "ballroom"
+name = "entities"
+version = "0.1.0"
+repository="local"

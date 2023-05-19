@@ -1,43 +1,31 @@
 import ballerina/http;
-import ballerinax/mysql;
-import ballerina/sql;
-import ballerinax/mysql.driver as _;
 import ballerina/time;
 import ballerina/uuid;
 import ballerina/log;
-import ballroom/data_model;
+import ballerina/persist;
 
-configurable string USER = ?;
-configurable string PASSWORD = ?;
-configurable string HOST = ?;
-configurable int PORT = ?;
-configurable string DATABASE = ?;
+import ballroom/data_model;
+import ballroom/entities;
 
 type UpdatedContest record {
     string title;
-    @sql:Column {name: "start_time"}
     time:Civil startTime;
-    @sql:Column {name: "end_time"}
     time:Civil endTime;
     string moderator;
-};
-
-type ChallengeId record {
-    @sql:Column {name: "challenge_id"}
-    string challengeId;
 };
 
 type NewContest record {
     string title;
     string description;
-    @sql:Column {name: "start_time"}
     time:Civil startTime;
-    @sql:Column {name: "end_time"}
     time:Civil endTime;
     string moderator;
 };
 
-final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
+type MyInternalServerError record {|
+    *http:InternalServerError;
+    record{|string message;|} body;
+|};
 
 # A service representing a network-accessible API
 # bound to port `9098`.
@@ -48,7 +36,7 @@ final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD
 }
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["https://localhost:3000", "http://localhost:9099"],
+        allowOrigins: ["https://localhost:3000"],
         allowCredentials: true,
         allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
@@ -56,196 +44,254 @@ final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD
     }
 }
 service /contestService on new http:Listener(9098) {
+    private final entities:Client db;
 
-    function init() {
+    function init() returns error?{
+        self.db = check new();
         log:printInfo("Contest service started...");
     }
 
-    resource function get contests/[string contestId]() returns data_model:Contest|http:InternalServerError|http:NotFound {
-        data_model:Contest|sql:Error contest = getContest(contestId);
-        if contest is sql:Error {
-            if contest is sql:NoRowsError {
-                return http:NOT_FOUND;
-            }
-            return http:INTERNAL_SERVER_ERROR;
-        }
+    resource function get contests/[string contestId]() 
+            returns data_model:Contest|MyInternalServerError|http:NotFound {
 
-        return contest;
+        entities:Contest|persist:Error entityContest = self.db->/contests/[contestId];
+        if entityContest is persist:InvalidKeyError {
+            return http:NOT_FOUND;
+        } else if entityContest is persist:Error {
+            log:printError("Error while retrieving contest by id", contestId = contestId, 'error = entityContest);
+            return <MyInternalServerError> {
+                body: {
+                    message: string `Error while retrieving contest by ${contestId}`
+                }
+            };
+        } else {
+            return toDataModelContest(entityContest);
+        }
     }
 
-    resource function get contests(string? status) returns data_model:Contest[]|http:InternalServerError|http:NotFound {
-        log:printInfo("get contests by status invoked", status = status);
-        data_model:Contest[]|sql:Error|error contestsWithStatus = getContestsWithStatus(status ?: "future");
-        if contestsWithStatus is data_model:Contest[] {
+    resource function get contests(string? status) 
+            returns data_model:Contest[]|http:InternalServerError|http:NotFound {
+        data_model:Contest[]|persist:Error contestsWithStatus = getContestsWithStatus(self.db, status ?: "future");
+        if contestsWithStatus is persist:Error {
+            log:printError("Error while retrieving contests", 'error = contestsWithStatus);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving contests`
+                }
+            };
+        } else {
             return contestsWithStatus;
-
-        } else if contestsWithStatus is sql:Error? {
-            return http:INTERNAL_SERVER_ERROR;
-
-        } else if contestsWithStatus is error {
-            return http:NOT_FOUND;
         }
-
     }
 
     resource function get contests/[string contestId]/challenges() returns string[]|http:InternalServerError {
-        string[]|sql:Error contestChallenges = getContestChallenges(contestId);
-        if contestChallenges is string[] {
+        string[]|persist:Error contestChallenges = getContestChallenges(self.db, contestId);
+        if contestChallenges is persist:Error {
+            log:printError("Error while retrieving challenges for contest", contestId = contestId, 'error = contestChallenges);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving challenges for contest ${contestId}`
+                }
+            };
+        } else {
             return contestChallenges;
-        } else if contestChallenges is sql:Error {
-            return http:INTERNAL_SERVER_ERROR;
         }
     }
 
-    resource function post contests(@http:Payload NewContest newContest) returns string|int|http:InternalServerError|error {
-        log:printInfo("POST contests invoked, REQ: " + newContest.toBalString());
-        string generatedContestId = "contest_" + uuid:createType1AsString();
-        data_model:Contest newContestToAdd = {
-            contestId: generatedContestId,
-            title: newContest.title,
-            description: newContest.description,
-            startTime: newContest.startTime,
-            endTime: newContest.endTime,
-            moderator: newContest.moderator
+    resource function post contests(@http:Payload NewContest newContest) returns string|http:InternalServerError {
+        string|persist:Error contest = addContest(self.db, newContest);
+        if contest is persist:Error {
+            log:printError("Error while adding contest", 'error = contest);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while adding contest`
+                }
+            };
+        } else {
+            return contest;
+        }
+    }
+
+    resource function post contests/[string contestId]/challenges/[string challengeId]() 
+            returns string|http:BadRequest|http:InternalServerError {
+        // Check for duplications. 
+        stream<entities:ChallengesOnContests, persist:Error?> challengesOnContets = self.db->/challengesoncontests;
+        entities:ChallengesOnContests[]|persist:Error duplicates = from var challengesOnContest in challengesOnContets
+            where challengesOnContest.contestId == contestId && challengesOnContest.challengeId == challengeId
+            select challengesOnContest;
+        if duplicates is persist:Error {
+            log:printError("Error while reading challengesoncontests data", 'error = duplicates);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while adding challenge to contest`
+                }
+            };
+        }
+
+        if duplicates.length() > 0 {
+            return <http:BadRequest>{
+                body: {
+                    message: string `Challenge already added to contest`
+                }
+            };
+        }
+
+        string[]|persist:Error insertedIds = self.db->/challengesoncontests.post([
+            {
+                id: uuid:createType4AsString(),
+                contestId: contestId,
+                challengeId: challengeId,
+                assignedTime: time:utcToCivil(time:utcNow())
+            }
+        ]);
+
+        if insertedIds is persist:Error {
+            log:printError("Error while adding challenge to contest", 'error = insertedIds);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while adding challenge to contest`
+                }
+            };
+        } else {
+            return insertedIds[0];
+        }
+    }
+
+    resource function put contests/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) 
+            returns UpdatedContest|http:InternalServerError|http:NotFound {
+        entities:ContestUpdate contestUpdate = {
+            title: toBeUpdatedContest.title,
+            startTime: toBeUpdatedContest.startTime,
+            endTime: toBeUpdatedContest.endTime,
+            moderatorId: toBeUpdatedContest.moderator
         };
-
-        string|int|error contest = addContest(newContestToAdd);
-        if contest is error {
-            return http:INTERNAL_SERVER_ERROR;
-        }
-
-        return contest;
-    }
-
-    resource function post contests/[string contestId]/challenges/[string challengeId]() returns string|int|http:InternalServerError|error {
-        string|int|sql:Error|error challengeToContest = addChallengeToContest(contestId, challengeId);
-
-        if challengeToContest is sql:Error {
-            if challengeToContest.message().includes("Duplicate entry", 0) {
-                return error("Challenge already added to contest", message = "Duplicate entry");
-            }
-            return http:INTERNAL_SERVER_ERROR;
-        }
-
-        return challengeToContest;
-
-    }
-
-    resource function put contests/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest) returns UpdatedContest|http:InternalServerError|http:NotFound {
-        error? updatedContest = updateContest(contestId, toBeUpdatedContest);
-        if updatedContest is error {
-            if updatedContest is sql:Error {
-                return http:INTERNAL_SERVER_ERROR;
-            }
+        entities:Contest|persist:Error updatedContest = self.db->/contests/[contestId].put(contestUpdate);
+        if updatedContest is persist:InvalidKeyError {
             return http:NOT_FOUND;
+        } else if updatedContest is persist:Error {
+            log:printError("Error while updating contest", contestId = contestId, 'error = updatedContest);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while updating contest ${contestId}`
+                }
+            };
+        } else {
+            toBeUpdatedContest["contestId"] = contestId;
+            return toBeUpdatedContest;
         }
-        toBeUpdatedContest["contestId"] = contestId;
-        return toBeUpdatedContest;
     }
 
     resource function delete contests/[string contestId]() returns http:InternalServerError|http:NotFound|http:Ok {
-        error? contest = deleteContest(contestId);
-        if contest is error {
-            if contest is sql:Error {
-                return http:INTERNAL_SERVER_ERROR;
-            }
+        entities:Contest|persist:Error deletedContest = self.db->/contests/[contestId].delete;
+        if deletedContest is persist:InvalidKeyError {
+            return http:NOT_FOUND;
+        } else if deletedContest is persist:Error {
+            log:printError("Error while deleting contest", contestId = contestId, 'error = deletedContest);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while deleting contest ${contestId}`
+                }
+            };
+        } else {
+            return http:OK;
+        }
+    }
+
+    resource function delete contests/[string contestId]/challenges/[string challengeId]() 
+            returns http:InternalServerError|http:NotFound|http:Ok {
+        stream<entities:ChallengesOnContests, persist:Error?> challengesOnContets = self.db->/challengesoncontests;
+        entities:ChallengesOnContests[]|persist:Error challengesOnContests = from var challengesOnContest in challengesOnContets
+            where challengesOnContest.contestId == contestId && challengesOnContest.challengeId == challengeId
+            select challengesOnContest;
+        if challengesOnContests is persist:Error {
+            log:printError("Error while reading challengesoncontests data", 'error = challengesOnContests);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while deleting the challenge in contest`
+                }
+            };
+        }
+
+        if challengesOnContests.length() == 0 {
             return http:NOT_FOUND;
         }
 
-        return http:OK;
-
-    }
-
-    resource function delete contests/[string contestId]/challenges/[string challengeId]() returns http:InternalServerError|http:NotFound|http:Ok {
-        string|int|sql:Error|error challengeFromContest = deleteChallengeFromContest(contestId, challengeId);
-        if challengeFromContest is sql:Error {
-            return http:INTERNAL_SERVER_ERROR;
+        entities:ChallengesOnContests|persist:Error challengesOnContestsResult = 
+            self.db->/challengesoncontests/[challengesOnContests[0].id].delete;
+        if challengesOnContestsResult is persist:Error {
+            log:printError("Error while deleting the challenge in contest", 'error = challengesOnContestsResult);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while deleting the challenge in contest`
+                }
+            };
         }
-
         return http:OK;
     }
 }
 
-function addChallengeToContest(string contestId, string challengeId) returns string|int|error {
-    sql:ExecutionResult execRes = check db->execute(`
-        INSERT INTO contest_challenge (contest_id, challenge_id) VALUES (${contestId}, ${challengeId});
-    `);
-    string|int? lastInsertId = execRes.lastInsertId;
-    if lastInsertId is () {
-        return error("Datbase does not support lastInsertId.");
-    } else {
-        return lastInsertId;
-    }
+function getContestChallenges(entities:Client db, string contestId) returns string[]|persist:Error {
+    // Optimization possible
+    stream<entities:ChallengesOnContests, persist:Error?> challengesOnContets = db->/challengesoncontests;
+    return from var challengesOnContest in challengesOnContets
+        where challengesOnContest.contestId == contestId
+        select challengesOnContest.challengeId;
 }
 
-function deleteChallengeFromContest(string contestId, string challengeId) returns string|int|error {
-    sql:ExecutionResult execRes = check db->execute(`
-        DELETE FROM contest_challenge WHERE contest_id = ${contestId} AND challenge_id = ${challengeId};
-    `);
-    string|int? lastInsertId = execRes.lastInsertId;
-    if lastInsertId is () {
-        return error("Datbase does not support lastInsertId.");
-    } else {
-        return lastInsertId;
-    }
-}
-
-function deleteContest(string contestId) returns error? {
-    sql:ExecutionResult execRes = check db->execute(`
-        DELETE FROM contest WHERE contest_id = ${contestId} AND CURRENT_TIMESTAMP() <= start_time;
-    `);
-    if execRes.affectedRowCount == 0 {
-        return error("INVALID CONTEST_ID OR CONTEST IS ONGOING OR ENDED.");
-    }
-    return;
-}
-
-function getContestChallenges(string contestId) returns string[]|sql:Error {
-    stream<ChallengeId, sql:Error?> result = db->query(`SELECT challenge_id FROM contest_challenge WHERE contest_id = ${contestId};`);
-    string[]|sql:Error listOfChallengeIds = from ChallengeId challengeId in result
-        select challengeId.challengeId;
-
-    return listOfChallengeIds;
-}
-
-function updateContest(string contestId, UpdatedContest toBeUpdatedContest) returns error? {
-    sql:ExecutionResult execRes = check db->execute(`
-        UPDATE contest SET title = ${toBeUpdatedContest.title}, start_time = ${toBeUpdatedContest.startTime}, end_time = ${toBeUpdatedContest.endTime}, moderator = ${toBeUpdatedContest.moderator} WHERE contest_id = ${contestId};
-    `);
-    if execRes.affectedRowCount == 0 {
-        return error("INVALID CONTEST_ID.");
-    }
-    return;
-}
-
-function getContestsWithStatus(string status) returns data_model:Contest[]|sql:Error|error {
-    sql:ParameterizedQuery query = ``;
-    if status.equalsIgnoreCaseAscii("future") {
-        query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() <= start_time;`;
-    } else if status.equalsIgnoreCaseAscii("present") {
-        query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() BETWEEN start_time AND end_time;`;
-    } else if status.equalsIgnoreCaseAscii("past") {
-        query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() >= end_time;`;
-    } else {
-        return error("INVALID STATUS!!");
-    }
-    stream<data_model:Contest, sql:Error?> result = db->query(query);
-
-    data_model:Contest[]|sql:Error listOfContests = from data_model:Contest contest in result
+function getContestsWithStatus(entities:Client db, string status) returns data_model:Contest[]|persist:Error {
+    // Optimization possible
+    stream<entities:Contest, persist:Error?> contestStream = db->/contests;
+    entities:Contest[] contests = check from var contest in contestStream
+        // TODO start time comparison
         select contest;
 
-    return listOfContests;
+    // sql:ParameterizedQuery query = ``;
+    // if status.equalsIgnoreCaseAscii("future") {
+    //     query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() <= start_time;`;
+    // } else if status.equalsIgnoreCaseAscii("present") {
+    //     query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() BETWEEN start_time AND end_time;`;
+    // } else if status.equalsIgnoreCaseAscii("past") {
+    //     query = `SELECT * FROM contest WHERE CURRENT_TIMESTAMP() >= end_time;`;
+    // } else {
+    //     return error("INVALID STATUS!!");
+    // }
+
+    return from var contest in contests
+        select toDataModelContest(contest);
 }
 
-function addContest(data_model:Contest newContest) returns string|int|error {
-    sql:ExecutionResult _ = check db->execute(`
-        INSERT INTO contest (contest_id, title, description, start_time, end_time, moderator) VALUES (${newContest.contestId},${newContest.title}, ${newContest.description}, ${newContest.startTime}, ${newContest.endTime}, ${newContest.moderator});
-    `);
-    string lastInsertId = newContest.contestId;
-    return lastInsertId;
+function addContest(entities:Client db, NewContest newContest) returns string|persist:Error {
+    string contestId = "contest-" + uuid:createType4AsString();
+    entities:Contest contest = {
+        id: contestId,
+        title: newContest.title,
+        description: newContest.description,
+        startTime: newContest.startTime,
+        endTime: newContest.endTime,
+        moderatorId: newContest.moderator,
+        imageUrl: ""
+    };
+
+    string[] lastInsertedIds = check db->/contests.post([contest]);
+    return lastInsertedIds[0];
 }
 
-function getContest(string contestId) returns data_model:Contest|sql:Error {
-    data_model:Contest|sql:Error result = db->queryRow(`SELECT * FROM contest WHERE contest_id = ${contestId}`);
-    return result;
-}
+function toDataModelContest(entities:Contest contest) returns data_model:Contest => {
+    contestId: contest.id,
+    title: contest.title,
+    description: contest.description,
+    startTime: contest.startTime,
+    endTime: contest.endTime,
+    moderator: contest.moderatorId
+};
+
+function fromDataModelContest(data_model:Contest contest, string contestId) returns entities:Contest => {
+    id: contestId,
+    title: contest.title,
+    description: contest.description ?: "",
+    startTime: contest.startTime,
+    endTime: contest.endTime,
+    moderatorId: contest.moderator,
+    imageUrl: ""
+};
+

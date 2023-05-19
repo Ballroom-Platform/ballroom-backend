@@ -1,5 +1,4 @@
 import ballerina/http;
-import samjs/ballroom.data_model.registry;
 
 public isolated client class Client {
     final http:Client clientEp;
@@ -8,7 +7,7 @@ public isolated client class Client {
     # + config - The configurations to be used when initializing the `connector` 
     # + serviceUrl - URL of the target service 
     # + return - An error if connector initialization failed 
-    public isolated function init(ConnectionConfig config =  {}, string serviceUrl = check registry:lookup("\"samjs/ballroom/UserService\"")) returns error? {
+    public isolated function init(ConnectionConfig config =  {}, string serviceUrl = "http://localhost:9095/userService") returns error? {
         http:ClientConfiguration httpClientConfig = {httpVersion: config.httpVersion, timeout: config.timeout, forwarded: config.forwarded, poolConfig: config.poolConfig, compression: config.compression, circuitBreaker: config.circuitBreaker, retryConfig: config.retryConfig, validation: config.validation};
         do {
             if config.http1Settings is ClientHttp1Settings {

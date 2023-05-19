@@ -4,11 +4,7 @@ import ballroom/data_model;
 import ballerina/log;
 import ballerina/io;
 
-configurable string USER = ?;
-configurable string PASSWORD = ?;
-configurable string HOST = ?;
-configurable int PORT = ?;
-configurable string DATABASE = ?;
+import sts_service.user;
 
 configurable string tokenIssuer = ?;
 configurable string tokenAudience = ?;
@@ -42,34 +38,35 @@ service /sts on new http:Listener(9093) {
         log:printInfo("STS service started...");
     }
 
-    isolated resource function get accessToken(@http:Header string Authorization) returns http:Forbidden|http:Response|http:InternalServerError {
+    resource function get accessToken(@http:Header string Authorization)
+            returns http:Forbidden|http:Response|http:InternalServerError {
         log:printInfo("Access token request received");
         do {
+            // TODO Refactor this code to work with application-specific types
             json idpResult = check verifyIDPToken(Authorization);
-
             if check idpResult.active == false {
                 return http:FORBIDDEN;
             }
 
-            string userID = check idpResult.sub;
-            log:printInfo("User ID: ", userID = userID);
-            json? userInfo = check getUserInfoFromIDP(Authorization);
-            log:printInfo("User info: ", userInfo = userInfo.toString());
-            json?|error userData = getUserData(userID);
+            string userId = check idpResult.sub;
+            log:printInfo("User id: ", userId = userId);
+
+            json userInfo = check getUserInfoFromIDP(Authorization);
+            log:printInfo("User info: ", userInfo = userInfo);
+
+            json|error userData = getUserData(userId);
             if userData is error? {
-                data_model:User user = {
+                // User does not exist in the database. Add the user to the database
+                data_model:User newUser = {
                     fullname: check userInfo?.name,
                     role: "contestant",
-                    user_id: userID,
+                    user_id: userId,
                     username: check userInfo?.username
                 };
-                log:printInfo("User: ", user = user);
-
-                _ = check userService->/users.post(user);
+                log:printInfo("Adding a new user: ", user = newUser);
+                user:Payload payload = check userService->/users.post(newUser);
                 log:printInfo("User added to the database");
-
-                userData = check getUserData(userID);
-                log:printInfo("User data recived ");
+                userData = payload.data.toJson();
             }
 
             io:println("Generating access token");
@@ -79,7 +76,7 @@ service /sts on new http:Listener(9093) {
             string refreshToken = check generateToken(check userData, 3600 * 24 * 30);
             log:printInfo("Access token generated", accessToken = accessToken);
 
-            check storeRefreshTokenUser(refreshToken, userID);
+            check storeRefreshTokenUser(refreshToken, userId);
             log:printInfo("Refresh token stored");
 
             http:CookieOptions cookieOptions = {
@@ -89,11 +86,8 @@ service /sts on new http:Listener(9093) {
             };
 
             http:Cookie refreshTokenCookie = new ("refreshToken", refreshToken, cookieOptions);
-
             http:Response response = new;
-
             response.addCookie(refreshTokenCookie);
-
             Payload responsePayload = {
                 data: {
                     accessToken
@@ -101,7 +95,6 @@ service /sts on new http:Listener(9093) {
             };
 
             response.setPayload(responsePayload.toJson());
-
             response.statusCode = 200;
             return response;
         }
@@ -109,10 +102,10 @@ service /sts on new http:Listener(9093) {
             log:printError("Error occured", 'error = e);
             return http:INTERNAL_SERVER_ERROR;
         }
-
     }
 
-    isolated resource function get refreshToken(http:Request request) returns http:Unauthorized|http:Forbidden|http:Response|http:InternalServerError {
+    resource function get refreshToken(http:Request request)
+            returns http:Unauthorized|http:Forbidden|http:Response|http:InternalServerError {
         http:Response response = new;
         do {
             http:Cookie[] cookies = request.getCookies();
@@ -129,17 +122,13 @@ service /sts on new http:Listener(9093) {
             }
 
             string storedUserID = check getRefreshTokenUser(refreshToken);
-
             jwt:Payload|http:Forbidden|http:Unauthorized tokenPayload = validateToken(refreshToken, storedUserID);
-
             if tokenPayload is http:Unauthorized || tokenPayload is http:Forbidden {
                 return tokenPayload;
             }
 
             json userData = check getUserData(storedUserID);
-
             string accessToken = check generateToken(userData, 3600);
-
             Payload responsePayload = {
                 data: {
                     accessToken

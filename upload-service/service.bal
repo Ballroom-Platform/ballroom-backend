@@ -1,25 +1,18 @@
 import ballerina/http;
 import ballerina/mime;
-import ballerina/regex;
 import ballerina/io;
 import ballerinax/rabbitmq;
-import ballerinax/mysql;
-import ballerinax/mysql.driver as _; // This bundles the driver to the project so that you don't need to bundle it via the `Ballerina.toml` file.
-import ballerina/sql;
 import ballerina/uuid;
 import ballroom/data_model;
 import ballerina/log;
-
-configurable string USER = ?;
-configurable string PASSWORD = ?;
-configurable string HOST = ?;
-configurable int PORT = ?;
-configurable string DATABASE = ?;
+import ballerina/time;
+import ballerina/persist;
+import ballroom/entities;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
 
-final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD, port = PORT, database = DATABASE);
+final entities:Client db = check new ();
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -30,7 +23,7 @@ final mysql:Client db = check new (host = HOST, user = USER, password = PASSWORD
 }
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://www.m3.com", "http://www.hello.com", "https://localhost:3000"],
+        allowOrigins: ["https://localhost:3000"],
         allowCredentials: false,
         allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
@@ -51,78 +44,100 @@ service /uploadService on new http:Listener(9094) {
     # + request - the input solution file as a multipart request with userId, challengeId & the solution as a zip file
     # + return - response message from server
     resource function post solution(http:Request request, http:Caller caller) returns error? {
-        io:println("ENT");
-        string generatedSubmissionId = uuid:createType1AsString();
-
         http:Response response = new;
-        response.setPayload(generatedSubmissionId);
-        mime:Entity[] bodyParts = check request.getBodyParts();
-
-        check caller->respond(response);
-
-        data_model:SubmissionMessage subMsg = {userId: "", challengeId: "", contestId: "", fileName: "", fileExtension: "", submissionId: ""};
-
-        foreach mime:Entity item in bodyParts {
-            io:println(item.getContentType());
-            // check if the body part is a zipped file or normal text
-            if item.getContentType().length() == 0 {
-                string contentDispositionString = item.getContentDisposition().toString();
-                // get the relevant key for the value provided
-                string[] keyArray = regex:split(contentDispositionString, "name=\"");
-                string key = regex:replaceAll(keyArray[1], "\"", "");
-                subMsg[key] = check item.getText();
-            }
-            // body part is a zipped file
-            else {
-                // Writes the incoming stream to a file using the `io:fileWriteBlocksFromStream` API
-                // by providing the file location to which the content should be written.
-                stream<byte[], io:Error?> streamer = check item.getByteStream();
-
-                string fileName = "";
-                string|error contentDisposition = item.getHeader("Content-Disposition");
-                if (contentDisposition is string) {
-                    string[] fileNameArray = regex:split(contentDisposition, "filename=\"");
-                    fileName = regex:replaceAll(fileNameArray[1], "\"", "");
-
-                }
-
-                io:Error? fileWriteBlocksFromStream = io:fileWriteBlocksFromStream("/tmp/" + fileName + ".zip", streamer);
-
-                byte[] & readonly fileReadBytes = check io:fileReadBytes("/tmp/" + fileName + ".zip");
-
-                // string base64EncodedString = check convertByteArrayStreamToString(streamer);
-
-                // string _ = check redisConn->set(fileName, base64EncodedString);
-                // redisConn.stop();
-
-                // subMsg.fileLocation = "./files/"  + fileName + ".zip";
-                subMsg.fileName = fileName;
-                subMsg.fileExtension = ".zip";
-                subMsg.submissionId = generatedSubmissionId;
-                io:println(subMsg);
-                check addSubmission(subMsg, fileReadBytes);
-                check streamer.close();
-            }
+        mime:Entity[]|error bodyParts = request.getBodyParts();
+        if bodyParts is error {
+            response.statusCode = 500;
+            response.setTextPayload(string `Error occurred while reading the request body`);
+            check caller->respond(response);
+            return;
         }
 
-        check self.rabbitmqClient->publishMessage({
-            content: subMsg,
-            routingKey: data_model:QUEUE_NAME
-        });
+        // check if the request contains 4 body parts
+        if bodyParts.length() != 4 {
+            response.statusCode = 400;
+            response.setTextPayload(string `Expects 4 bodyparts but found ${bodyParts.length()}`);
+            check caller->respond(response);
+            return;
+        }
 
+        // Creates a map with the body part name as the key and the body part as the value
+        map<mime:Entity> bodyPartMap = {};
+        foreach mime:Entity entity in bodyParts {
+            bodyPartMap[entity.getContentDisposition().name] = entity;
+        }
+
+        // check if the request contains all the required body parts
+        if !bodyPartMap.hasKey("userId") || !bodyPartMap.hasKey("challengeId") || !bodyPartMap.hasKey("contestId") || !bodyPartMap.hasKey("submission") {
+            response.statusCode = 400;
+            response.setTextPayload(string `Expects bodyparts with names userId, challengeId, contestId & submission`);
+            check caller->respond(response);
+            return;
+        }
+
+        do {
+            // Respond with a generated submission id
+            string generatedSubmissionId = uuid:createType1AsString();
+            response.setPayload(generatedSubmissionId);
+            check caller->respond(response);
+
+            data_model:SubmissionMessage subMsg = {
+                userId: check bodyPartMap.get("userId").getText(),
+                challengeId: check bodyPartMap.get("challengeId").getText(),
+                contestId: check bodyPartMap.get("contestId").getText(),
+                fileName: bodyPartMap.get("submission").getContentDisposition().fileName,
+                fileExtension: ".zip",
+                submissionId: generatedSubmissionId
+            };
+
+            byte[] submittedFile = check readEntityToByteArray("submission", bodyPartMap);
+            persist:Error? result = addSubmission(subMsg, submittedFile);
+            if result is persist:Error {
+                fail error("Error occurred while adding submission to the database", cause = result);
+            }
+
+            check self.rabbitmqClient->publishMessage({
+                content: subMsg,
+                routingKey: data_model:QUEUE_NAME
+            });
+        } on fail var err {
+            log:printError("Error occurred while storing the submitted file.", 'error = err);
+        }
     }
-
 }
 
-isolated function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns error? {
+function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns persist:Error? {
     // TODO These two queries should be in a transaction
-    sql:ExecutionResult _ = check db->execute(`
-        INSERT INTO submission (submission_id, user_id, contest_id, challenge_id, file_name, file_extension, submitted_time)
-        VALUES (${submissionMessage.submissionId}, ${submissionMessage.userId}, ${submissionMessage.contestId}, ${submissionMessage.challengeId},  
-        ${submissionMessage.fileName}, ${submissionMessage.fileExtension}, CURRENT_TIMESTAMP())
-    `);
-    sql:ExecutionResult _ = check db->execute(`
-        INSERT INTO submission_file_table (submission_id, submission_file)
-        VALUES (${submissionMessage.submissionId}, ${submissionFile})
-    `);
+    string submissionFileId = uuid:createType4AsString();
+    _ = check db->/submittedfiles.post([
+        {
+            id: submissionFileId,
+            fileName: submissionMessage.fileName,
+            fileExtension: submissionMessage.fileExtension,
+            file: submissionFile
+        }
+    ]);
+
+    _ = check db->/submissions.post([
+        {
+            id: submissionMessage.submissionId,
+            submittedTime: time:utcToCivil(time:utcNow()),
+            score: 0,
+            userId: submissionMessage.userId,
+            challengeId: submissionMessage.challengeId,
+            contestId: submissionMessage.contestId,
+            submittedfileId: submissionFileId
+        }
+    ]);
+}
+
+function readEntityToByteArray(string entityName, map<mime:Entity> entityMap) returns byte[]|error {
+    stream<byte[], io:Error?> testCaseStream = check entityMap.get(entityName).getByteStream();
+    byte[] testCaseFile = [];
+    check from var bytes in testCaseStream
+        do {
+            testCaseFile.push(...bytes);
+        };
+
+    return testCaseFile;
 }
