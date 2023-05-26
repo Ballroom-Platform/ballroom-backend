@@ -15,6 +15,41 @@ type UpdatedChallenge record {
     string difficulty;
 };
 
+type SharedChallenge record {|
+    string userId;
+    record {|
+        string id;
+        string title;
+        string description;
+        string constraints;
+        time:Civil createdTime;
+        byte[] templateFile;
+        string difficulty;
+        byte[] testCasesFile;
+        string authorId;
+    |} challenge;
+|};
+
+type Payload record {
+    string message;
+    anydata data;
+};
+
+type ChallengeAccessAdmins record {|
+    string challengeId;
+    record {|
+        string id;
+        string username;
+        string fullname;
+    |} user;
+|};
+
+type ChallengeAccessAdminsOut record {|
+    string userId;
+    string userName;
+    string fullName;
+|};
+
 # A service representing a network-accessible API
 # bound to port `9096`.
 @display {
@@ -81,6 +116,54 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
+    resource function get challenges/[string difficulty]/owned/[string userId]() returns data_model:Challenge[]|http:InternalServerError|http:BadRequest {
+        if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
+            return http:BAD_REQUEST;
+        }
+
+        stream<entities:Challenge, persist:Error?> challengeStream = self.db->/challenges;
+        entities:Challenge[]|persist:Error challenges = from var challenge in challengeStream
+            where challenge.difficulty == difficulty && challenge.authorId == userId
+            select challenge;
+
+        if challenges is persist:Error {
+            log:printError("Error while retrieving challenges", 'error = challenges);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving challenges`
+                }
+            };
+        } else {
+            data_model:Challenge[] dataModelChallenges = from var challenge in challenges
+                select toDataModelChallenge(challenge);
+            return dataModelChallenges;
+        }
+    }
+
+    resource function get challenges/[string difficulty]/shared/[string userId]() returns data_model:Challenge[]|http:InternalServerError|http:BadRequest {
+        if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
+            return http:BAD_REQUEST;
+        }
+
+        stream<SharedChallenge, persist:Error?> sharedChallenges = self.db->/challengeaccesses;
+        SharedChallenge[]|persist:Error challenges = from var sharedChallenge in sharedChallenges
+                where sharedChallenge.challenge.difficulty == difficulty && sharedChallenge.userId == userId
+                select sharedChallenge;
+
+        if challenges is persist:Error {
+            log:printError("Error while retrieving challenges", 'error = challenges);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving challenges`
+                }
+            };
+        } else {
+            data_model:Challenge[] dataModelChallenges = from var challenge in challenges
+                select toSharedChallenge(challenge);
+            return dataModelChallenges;
+        }
+    }
+
     // OpenAPI Tool Bug:https://github.com/ballerina-platform/openapi-tools/issues/1314  returns byte[]|error
     resource function get challenges/[string challengeId]/template()
             returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
@@ -103,14 +186,44 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
+    resource function get challenges/[string challengeId]/access() returns Payload|http:InternalServerError {
+       do {
+            ChallengeAccessAdminsOut[]|persist:Error result = getChallengeAdmins(self.db, challengeId) ?: [];
+
+            Payload responsePayload = {
+                message: "Admin access table created",
+                data: check result
+            };
+            return responsePayload;
+
+        } on fail error e {
+            log:printError("Error while creating admin access table", 'error = e);
+            return http:INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    resource function get challenges/accessgranted/[string challengeId]() returns string[]|http:InternalServerError|http:NotFound {
+        string[]|persist:Error users =  getAccessGrantedUsers(self.db, challengeId);
+        if users is persist:Error {
+            log:printError("Error while retrieving users", 'error = users);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving users`
+                }
+            };
+        } else {
+            return users;
+        }
+    }
+
     resource function post challenges(http:Request request)
             returns string|http:BadRequest|http:InternalServerError|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
-        // Check if the request has 6 body parts
-        if bodyParts.length() != 6 {
+        // Check if the request has 7 body parts
+        if bodyParts.length() != 7 {
             return <http:BadRequest>{
                 body: {
-                    message: string `Expects 6 bodyparts but found ${bodyParts.length()}`
+                    message: string `Expects 7 bodyparts but found ${bodyParts.length()}`
                 }
             };
         }
@@ -124,10 +237,10 @@ service /challengeService on new http:Listener(9096) {
         // Check if all the required body parts are present
         if !bodyPartMap.hasKey("title") || !bodyPartMap.hasKey("description") ||
             !bodyPartMap.hasKey("constraints") || !bodyPartMap.hasKey("difficulty") ||
-            !bodyPartMap.hasKey("testCase") || !bodyPartMap.hasKey("template") {
+            !bodyPartMap.hasKey("testCase") || !bodyPartMap.hasKey("template") || !bodyPartMap.hasKey("authorId") {
             return <http:BadRequest>{
                 body: {
-                    message: string `Expects 6 bodyparts with names 'title', 'description', 'constraints', 'difficulty', 'testCase' and 'template'`
+                    message: string `Expects 7 bodyparts with names 'title', 'description', 'constraints', 'difficulty', 'testCase' , 'author' and 'template'`
                 }
             };
         }
@@ -140,8 +253,8 @@ service /challengeService on new http:Listener(9096) {
             constraints: check bodyPartMap.get("constraints").getText(),
             testCasesFile: check readEntityToByteArray("testCase", bodyPartMap),
             templateFile: check readEntityToByteArray("template", bodyPartMap),
-            createdTime: time:utcToCivil(time:utcNow())
-        };
+            createdTime: time:utcToCivil(time:utcNow()),
+            authorId:  check bodyPartMap.get("authorId").getText()};
 
         string[]|persist:Error insertedIds = self.db->/challenges.post([entityChallenge]);
         if insertedIds is persist:Error {
@@ -149,6 +262,51 @@ service /challengeService on new http:Listener(9096) {
             return <http:InternalServerError>{
                 body: {
                     message: string `Error while adding contest`
+                }
+            };
+        } else {
+            return insertedIds[0];
+        }
+    }
+
+    resource function post challenges/[string challengeId]/access/[string userId]()
+            returns string|http:BadRequest|http:InternalServerError {
+        stream<entities:ChallengeAccess, persist:Error?> challengeAccesses = self.db->/challengeaccesses;
+
+        entities:ChallengeAccess[]|persist:Error duplicates = from var challengeAccess in challengeAccesses
+            where challengeAccess.challengeId == challengeId && challengeAccess.userId == userId
+            select challengeAccess;
+
+        if duplicates is persist:Error {
+            log:printError("Error while reading challengeAccesss data", 'error = duplicates);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while adding admins to challenge`
+                }
+            };
+        }
+
+        if duplicates.length() > 0 {
+            return <http:BadRequest>{
+                body: {
+                    message: string `Admin already added to challenge`
+                }
+            };
+        }
+
+        string[]|persist:Error insertedIds = self.db->/challengeaccesses.post([
+            {
+                id: uuid:createType4AsString(),
+                challengeId: challengeId,
+                userId: userId
+            }
+        ]);
+
+        if insertedIds is persist:Error {
+            log:printError("Error while adding admin to challenge", 'error = insertedIds);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while adding admin to challenge`
                 }
             };
         } else {
@@ -199,6 +357,49 @@ service /challengeService on new http:Listener(9096) {
             return http:OK;
         }
     }
+
+    resource function delete challenges/[string challengeId]/access/[string userId]() returns http:InternalServerError|http:NotFound|http:Ok {
+        stream<entities:ChallengeAccess, persist:Error?> challengeAccessStream = self.db->/challengeaccesses;
+        
+        entities:ChallengeAccess[]|persist:Error challengeAccesses = from var challengeAccess in challengeAccessStream
+            select challengeAccess;
+
+        if challengeAccesses is persist:Error {
+            log:printError("Error while reading challenge access data", 'error = challengeAccesses);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving data`
+                }
+            };
+        } else {
+            entities:ChallengeAccess[] listResult = from var challengeAccess in challengeAccesses
+                where challengeAccess.challengeId == challengeId && challengeAccess.userId == userId
+                select challengeAccess;
+
+            if (listResult.length() == 0) {
+                return <http:NotFound>{
+                    body: {
+                        message: string `User ${userId} hasn't access to challenge ${challengeId}`
+                    }
+                };
+            }
+
+            entities:ChallengeAccess|persist:Error deleteChallengeAccess = self.db->/challengeaccesses/[listResult[0].id].delete;
+
+            if deleteChallengeAccess is persist:InvalidKeyError {
+                return http:NOT_FOUND;
+            } else if deleteChallengeAccess is persist:Error {
+                log:printError("Error while deleting ", 'error = deleteChallengeAccess);
+                return <http:InternalServerError>{
+                    body: {
+                        message: string `Error while deleting challenge User ${userId} challenge ${challengeId} access`
+                    }
+                };
+            } else {
+                return http:OK;
+            }
+        }
+    }
 }
 
 function readEntityToByteArray(string entityName, map<mime:Entity> entityMap) returns byte[]|error {
@@ -220,5 +421,58 @@ isolated function toDataModelChallenge(entities:Challenge challenge) returns dat
     difficulty: challenge.difficulty,
     testCase: challenge.testCasesFile,
     template: challenge.templateFile,
-    constraints: challenge.constraints
+    constraints: challenge.constraints,
+    authorId: challenge.authorId
 };
+
+isolated function toSharedChallenge(SharedChallenge challenge) returns data_model:Challenge =>
+{
+    title: challenge.challenge.title,
+    challengeId: challenge.challenge.id,
+    description: challenge.challenge.description,
+    difficulty: challenge.challenge.difficulty,
+    testCase: challenge.challenge.testCasesFile,
+    template: challenge.challenge.templateFile,
+    constraints: challenge.challenge.constraints,
+    authorId: challenge.challenge.authorId
+};
+
+function getChallengeAdmins(entities:Client db, string challengeId) returns ChallengeAccessAdminsOut[]|persist:Error? {
+
+    stream<ChallengeAccessAdmins, persist:Error?> challengeAccessStream = db->/challengeaccesses;
+
+    ChallengeAccessAdmins[]|persist:Error challengeAccesses = from var challengeAccess in challengeAccessStream
+        select challengeAccess;
+
+    if challengeAccesses is persist:Error {
+        log:printError("Error while reading contests data", 'error = challengeAccesses);
+        return challengeAccesses;
+    } else {
+        return from var challengeAccess in challengeAccesses
+            where challengeAccess.challengeId == challengeId
+            select toChallengeAccessAdminsOut(challengeAccess);
+    }
+}
+
+function toChallengeAccessAdminsOut( ChallengeAccessAdmins challengeAccess) returns ChallengeAccessAdminsOut => {
+    userId: challengeAccess.user.id,
+    userName: challengeAccess.user.username,
+    fullName: challengeAccess.user.fullname
+};
+
+function getAccessGrantedUsers(entities:Client db, string challengeId) returns string[]|persist:Error {
+
+    stream<entities:ChallengeAccess, persist:Error?> challengeAccessStream = db->/challengeaccesses;
+
+    entities:ChallengeAccess[]|persist:Error challengeAccesses = from var challengeAccess in challengeAccessStream
+        select challengeAccess;
+
+    if challengeAccesses is persist:Error {
+        log:printError("Error while reading contests data", 'error = challengeAccesses);
+        return challengeAccesses;
+    } else {
+        return from var challengeAccess in challengeAccesses
+            where challengeAccess.challengeId == challengeId
+            select challengeAccess.userId;
+    }
+}

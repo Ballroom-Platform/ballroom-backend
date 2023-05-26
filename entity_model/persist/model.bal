@@ -12,6 +12,9 @@ type User record {|
 	UsersOnContests[] registeredContests;
 	Submission[] submissions;
 	RefreshToken[] refreshtokens;
+	contestAccess[] contestaccess;
+	ChallengeAccess[] challengeaccess;
+	Challenge[] challenge;
 |};
 
 type Contest record {|
@@ -28,6 +31,7 @@ type Contest record {|
 	ChallengesOnContests[] challenges;
 	UsersOnContests[] registeredUsers;
 	Submission[] submissions;
+	contestAccess[] contestaccess;
 |};
 
 // enum Difficulty {
@@ -50,6 +54,8 @@ type Challenge record {|
     byte[] testCasesFile;
 	ChallengesOnContests[] contests;
 	Submission[] submissions;
+	ChallengeAccess[] challengeaccess;
+    User author;
 |};
 
 // Many-to-many relations between Challenge and Contest
@@ -91,5 +97,20 @@ type RefreshToken record {|
     readonly string id;
     // VARCHAR(1000)
     string token;
+    User user;
+|};
+
+// Many-to-many relations between user and Contest
+type contestAccess record {|
+    readonly string id;
+    Contest contest;
+    User user;
+    string accessType;
+|};
+
+// Many-to-many relations between user and Challenge
+type ChallengeAccess record {|
+    readonly string id;
+    Challenge challenge;
     User user;
 |};

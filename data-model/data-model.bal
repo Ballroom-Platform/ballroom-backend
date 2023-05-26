@@ -135,6 +135,7 @@ public type Challenge record{
     byte[] testCase;
     @sql:Column {name: "challenge_template"}
     byte[]? template;
+    string authorId;
 };
 
 
