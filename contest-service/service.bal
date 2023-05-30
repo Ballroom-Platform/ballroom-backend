@@ -535,14 +535,14 @@ function getContestsWithStatus(entities:Client db, string status) returns data_m
     }
 }
 
-function compareTime(time:Civil startTime, time:Civil endTime) returns string|error {
+function compareTime(time:Civil startTime, time:Civil endTime) returns string|error {    
     startTime.utcOffset = {
-           hours: 0,
-           minutes: 0
+           hours: 5,
+           minutes: 30
        };
     endTime.utcOffset = {
-           hours: 0,
-           minutes: 0
+           hours: 5,
+           minutes: 30
        };
     time:Utc nowTimeUTC = time:utcNow();
     time:Utc|time:Error startTimeUTC = time:utcFromCivil(startTime);
