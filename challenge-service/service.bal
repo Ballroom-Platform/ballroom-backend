@@ -140,6 +140,49 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
+    resource function get challenges/owned/[string userId]() returns string[]|http:InternalServerError|http:BadRequest {
+
+        stream<entities:Challenge, persist:Error?> challengeStream = self.db->/challenges;
+
+        entities:Challenge[]|persist:Error challenges = from var challenge in challengeStream
+            where challenge.authorId == userId
+            select challenge;
+
+        if challenges is persist:Error {
+            log:printError("Error while retrieving challenges", 'error = challenges);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving challenges`
+                }
+            };
+        } else {
+            string[] challengeIds = from var challenge in challenges
+                select challenge.id;
+            return challengeIds;
+        }
+    }
+
+    resource function get challenges/shared/[string userId]() returns string[]|http:InternalServerError|http:BadRequest {
+
+        stream<SharedChallenge, persist:Error?> sharedChallenges = self.db->/challengeaccesses;
+        SharedChallenge[]|persist:Error challenges = from var sharedChallenge in sharedChallenges
+                where  sharedChallenge.userId == userId
+                select sharedChallenge;
+
+        if challenges is persist:Error {
+            log:printError("Error while retrieving challenges", 'error = challenges);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving challenges`
+                }
+            };
+        } else {
+            string[] challengeIds = from var challenge in challenges
+                select challenge.challenge.id;
+            return challengeIds;
+        }
+    }
+
     resource function get challenges/[string difficulty]/shared/[string userId]() returns data_model:Challenge[]|http:InternalServerError|http:BadRequest {
         if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
             return http:BAD_REQUEST;

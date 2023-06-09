@@ -15,6 +15,7 @@ type User record {|
 	contestAccess[] contestaccess;
 	ChallengeAccess[] challengeaccess;
 	Challenge[] challenge;
+	Registrants[] registrants;
 |};
 
 type Contest record {|
@@ -32,6 +33,7 @@ type Contest record {|
 	UsersOnContests[] registeredUsers;
 	Submission[] submissions;
 	contestAccess[] contestaccess;
+	Registrants[] registrants;
 |};
 
 // enum Difficulty {
@@ -113,4 +115,11 @@ type ChallengeAccess record {|
     readonly string id;
     Challenge challenge;
     User user;
+|};
+
+type Registrants record {|
+    readonly string id;
+    time:Civil registeredTime;
+    User user;
+    Contest contest;
 |};

@@ -130,6 +130,44 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
+     resource function get contests/[string status]/[string userId]/registered()
+            returns data_model:Contest[]|MyInternalServerError|http:NotFound|error {
+
+        stream<entities:Registrants, persist:Error?> registrantstream = self.db->/registrants;
+
+        string[]|persist:Error registeredContestIds = from var registrant in registrantstream
+            where registrant.userId == userId
+            select registrant.contestId;
+
+        if registeredContestIds is persist:Error {
+            log:printError("Error while reading registrants data", 'error = registeredContestIds);
+            return <MyInternalServerError>{
+                body: {
+                    message: string `Error while reading registrants data`
+                }
+            };
+        } else {
+            stream<entities:Contest, persist:Error?> contestStream = self.db->/contests;
+
+            //iterrate through the contest stream and filter the contests that are registered by the user
+            data_model:Contest[]|persist:Error contests = from var contest in contestStream
+                from var registeredContestId in registeredContestIds
+                where contest.id == registeredContestId && compareTime(contest.startTime, contest.endTime) == status
+                select toDataModelContest(contest);
+            
+            if contests is persist:Error {
+                log:printError("Error while reading contests data", 'error = contests);
+                return <MyInternalServerError>{
+                    body: {
+                        message: string `Error while reading contests data`
+                    }
+                };
+            } else {
+                return contests;
+            }
+        }
+    }
+
     resource function get contests/[string status]/owned/[string userId]() returns data_model:Contest[]|http:InternalServerError|http:NotFound {
 
         data_model:Contest[]|persist:Error contests = getOwnerContests(self.db, userId, status);

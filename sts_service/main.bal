@@ -30,7 +30,7 @@ public isolated function verifyIDPToken(string header) returns json|error {
     headers = ({
         "Content-Type": "application/x-www-form-urlencoded",
         "Connection": "keep-alive",
-        "Authorization": "Basic dEJkVG42NjVtV2F5d2d6bTdkc1MyYUZ4MzVvYTpBS3V3enBORlVCbHBwdjhyazduSFFVQVlNWTBh"
+        "Authorization": "Basic YW9nR3Jka1l0eDlBUzJ3VW9QaHRsYlFCcTQ4YTp2MHpUN0hxQWNHWWE3TnBtc01lQ29fdVU4eThh"
     })
         , message = "token=" + idpToken,
         targetType = json);
