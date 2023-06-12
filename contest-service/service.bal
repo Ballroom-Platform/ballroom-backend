@@ -6,6 +6,8 @@ import ballerina/persist;
 
 import ballroom/data_model;
 import ballroom/entities;
+import ballerina/mime;
+import ballerina/io;
 
 type UpdatedContest record {
     string title;
@@ -16,7 +18,7 @@ type UpdatedContest record {
 
 type NewContest record {
     string title;
-    string description;
+    byte[] readmeFile;
     time:Civil startTime;
     time:Civil endTime;
     string moderator;
@@ -28,7 +30,7 @@ type SharedContest record {|
     record {|
         string id;
         string title;
-        string description;
+        byte[] readmeFile;
         time:Civil startTime;
         time:Civil endTime;
         string imageUrl;
@@ -39,7 +41,7 @@ type SharedContest record {|
 type SharedContestOut record {
     string contestId;
     string title;
-    string? description;
+    byte[] readmeFile;
     time:Civil startTime;
     time:Civil endTime;
     string accessType;
@@ -241,17 +243,73 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function post contests(@http:Payload NewContest newContest) returns string|http:InternalServerError {
-        string|persist:Error contest = addContest(self.db, newContest);
-        if contest is persist:Error {
-            log:printError("Error while adding contest", 'error = contest);
+        resource function get contests/[string contestId]/readme()
+            returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
+        http:InternalServerError|http:NotFound {
+        record {|byte[] readmeFile;|}|persist:Error readmeFileRecord = self.db->/contests/[contestId];
+        if readmeFileRecord is persist:InvalidKeyError {
+            return http:NOT_FOUND;
+        } else if readmeFileRecord is persist:Error {
+            log:printError("Error while retrieving contest radme by id", contestId = contestId,
+                'error = readmeFileRecord);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving readme file by the contest '${contestId}'`
+                }
+            };
+        } else {
+            http:Response response = new;
+            response.setBinaryPayload(readmeFileRecord.readmeFile);
+            return response;
+        }
+    }
+
+
+    resource function post contests(http:Request request) returns string|http:BadRequest|http:InternalServerError|error {
+        mime:Entity[] bodyParts = check request.getBodyParts();
+        // Check if the request has 5 body parts
+        if bodyParts.length() != 5 {
+            return <http:BadRequest>{
+                body: {
+                    message: string `Expects 4 bodyparts but found ${bodyParts.length()}`
+
+                }
+            };
+        }
+         // Creates a map with the body part name as the key and the body part as the value
+        map<mime:Entity> bodyPartMap = {};
+        foreach mime:Entity entity in bodyParts {
+            bodyPartMap[entity.getContentDisposition().name] = entity;
+        }
+        // Check if all the required body parts are present
+        if !bodyPartMap.hasKey("title") || !bodyPartMap.hasKey("readme") ||
+            !bodyPartMap.hasKey("startTime") || !bodyPartMap.hasKey("endTime") || !bodyPartMap.hasKey("moderator") {
+            return <http:BadRequest>{
+                body: {
+                    message: string `Expects 4 bodyparts with names 'title', 'readme', 'startTime', 'endTime' and 'moderator'`
+                }
+            };
+        }
+
+        entities:Contest entityContest = {
+            id: uuid:createType4AsString(),
+            title: check bodyPartMap.get("title").getText(),
+            readmeFile: check readEntityToByteArray("readme", bodyPartMap),
+            moderatorId: check bodyPartMap.get("moderator").getText(),
+            imageUrl: "",
+            startTime: check readEntityToTime("startTime", bodyPartMap),
+            endTime: check readEntityToTime("endTime", bodyPartMap)};
+
+        string[]|persist:Error insertedIds = self.db->/contests.post([entityContest]);
+        if insertedIds is persist:Error {
+            log:printError("Error while adding contest", 'error = insertedIds);
             return <http:InternalServerError>{
                 body: {
                     message: string `Error while adding contest`
                 }
             };
         } else {
-            return contest;
+            return insertedIds[0];
         }
     }
 
@@ -507,7 +565,7 @@ function getSharedContests(entities:Client db, string userId, string status) ret
 function toSharedContestOut(SharedContest contest) returns SharedContestOut => {
     contestId: contest.contest.id,
     title: contest.contest.title,
-    description: contest.contest.description,
+    readmeFile: contest.contest.readmeFile,
     startTime: contest.contest.startTime,
     endTime: contest.contest.endTime,
     moderator: contest.contest.moderatorId,
@@ -599,26 +657,10 @@ function compareTime(time:Civil startTime, time:Civil endTime) returns string|er
     }
 }
 
-function addContest(entities:Client db, NewContest newContest) returns string|persist:Error {
-    string contestId = "contest-" + uuid:createType4AsString();
-    entities:Contest contest = {
-        id: contestId,
-        title: newContest.title,
-        description: newContest.description,
-        startTime: newContest.startTime,
-        endTime: newContest.endTime,
-        moderatorId: newContest.moderator,
-        imageUrl: ""
-    };
-
-    string[] lastInsertedIds = check db->/contests.post([contest]);
-    return lastInsertedIds[0];
-}
-
 function toDataModelContest(entities:Contest contest) returns data_model:Contest => {
     contestId: contest.id,
     title: contest.title,
-    description: contest.description,
+    readme: contest.readmeFile,
     startTime: contest.startTime,
     endTime: contest.endTime,
     moderator: contest.moderatorId
@@ -627,10 +669,55 @@ function toDataModelContest(entities:Contest contest) returns data_model:Contest
 function fromDataModelContest(data_model:Contest contest, string contestId) returns entities:Contest => {
     id: contestId,
     title: contest.title,
-    description: contest.description ?: "",
+    readmeFile: contest.readme,
     startTime: contest.startTime,
     endTime: contest.endTime,
     moderatorId: contest.moderator,
     imageUrl: ""
 };
 
+function readEntityToByteArray(string entityName, map<mime:Entity> entityMap) returns byte[]|error {
+    stream<byte[], io:Error?> testCaseStream = check entityMap.get(entityName).getByteStream();
+    byte[] testCaseFile = [];
+    check from var bytes in testCaseStream
+        do {
+            testCaseFile.push(...bytes);
+        };
+    return testCaseFile;
+}
+
+function readEntityToTime(string entityName, map<mime:Entity> entityMap) returns time:Civil|error {
+    //get the time from the entity 
+    string timeString = check entityMap.get(entityName).getText();
+    
+    //get year 
+    string yearString = timeString.substring(0, 4);
+    int year = check int:fromString(yearString);
+
+    //get month
+    string monthString = timeString.substring(5, 7);
+    int month = check int:fromString(monthString);
+
+    //get day
+    string dayString = timeString.substring(8, 10);
+    int day = check int:fromString(dayString);
+
+    //get hour
+    string hourString = timeString.substring(11, 13);
+    int hour = check int:fromString(hourString);
+
+    //get minute
+    string minuteString = timeString.substring(14, 16);
+    int minute = check int:fromString(minuteString);
+
+    //make the time object
+    time:Civil time = {
+        year: year,
+        month: month,
+        day: day,
+        hour: hour,
+        minute: minute
+    };
+
+    return time;
+}

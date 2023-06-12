@@ -1,4 +1,5 @@
 -- Active: 1683109579686@@127.0.0.1@3306@ballroomdb
+
 -- AUTO-GENERATED FILE.
 
 -- This file is an auto-generated file by Ballerina persistence layer for model.
@@ -14,6 +15,7 @@ DROP TABLE IF EXISTS `Contest`;
 DROP TABLE IF EXISTS `Challenge`;
 DROP TABLE IF EXISTS `SubmittedFile`;
 DROP TABLE IF EXISTS `User`;
+DROP TABLE IF EXISTS `Registrants`;
 
 CREATE TABLE `User` (
 	`id` VARCHAR(191) NOT NULL,
@@ -34,8 +36,7 @@ CREATE TABLE `SubmittedFile` (
 CREATE TABLE `Challenge` (
 	`id` VARCHAR(191) NOT NULL,
 	`title` VARCHAR(191) NOT NULL,
-	`description` VARCHAR(9000) NOT NULL,
-	`constraints` VARCHAR(500) NOT NULL,
+	`readmeFile` BlOB NOT NULL,
 	`createdTime` DATETIME NOT NULL,
 	`templateFile` BlOB NOT NULL,
 	`difficulty` VARCHAR(191) NOT NULL,
@@ -48,7 +49,7 @@ CREATE TABLE `Challenge` (
 CREATE TABLE `Contest` (
 	`id` VARCHAR(191) NOT NULL,
 	`title` VARCHAR(191) NOT NULL,
-	`description` VARCHAR(9000) NOT NULL,
+	`readmeFile` BlOB NOT NULL,
 	`startTime` DATETIME NOT NULL,
 	`endTime` DATETIME NOT NULL,
 	`imageUrl` VARCHAR(191) NOT NULL,
@@ -119,3 +120,12 @@ CREATE TABLE `ChallengesOnContests` (
 	PRIMARY KEY(`id`)
 );
 
+CREATE TABLE `Registrants` (
+	`id` VARCHAR(191) NOT NULL,
+	`registeredTime` DATETIME NOT NULL,
+	`userId` VARCHAR(191) NOT NULL,
+	CONSTRAINT FK_REGISTRANTS_USER FOREIGN KEY(`userId`) REFERENCES `User`(`id`),
+	`contestId` VARCHAR(191) NOT NULL,
+	CONSTRAINT FK_REGISTRANTS_CONTEST FOREIGN KEY(`contestId`) REFERENCES `Contest`(`id`) ON DELETE CASCADE,
+	PRIMARY KEY(`id`)
+);

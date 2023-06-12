@@ -127,8 +127,7 @@ public type Challenge record{
     @sql:Column {name: "challenge_id"}
     string challengeId;
     string title;
-    string description;
-    string constraints;
+    byte[] readme;
     // Not sure about the type here, byte[]?
     // ChallengeDifficulty difficulty; 
     string difficulty;
@@ -143,7 +142,7 @@ public type Contest record {
     @sql:Column {name: "contest_id"}
     string contestId;
     string title;
-    string? description;
+    byte[] readme;
     @sql:Column {name: "start_time"}
     time:Civil startTime;
     @sql:Column {name: "end_time"}

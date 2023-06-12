@@ -21,8 +21,7 @@ type User record {|
 type Contest record {|
     readonly string id;
     string title;
-    // TODO VARCHAR(1000)
-    string description;
+    byte[] readmeFile;
     // MySQL type => TIMESTAMP
     time:Civil startTime;
     time:Civil endTime;
@@ -45,12 +44,9 @@ type Contest record {|
 type Challenge record {|
     readonly string id;
     string title;
-    // TODO VARCHAR(1000)
-    string description;
-    // TODO VARCHAR(500)
-    string constraints;
     time:Civil createdTime;
     byte[] templateFile;
+    byte[] readmeFile;
     // difficulty ENUM('EASY', 'MEDIUM', 'HARD') NOT NULL,
     string difficulty;
     byte[] testCasesFile;

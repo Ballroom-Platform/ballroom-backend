@@ -10,8 +10,6 @@ import ballerina/time;
 
 type UpdatedChallenge record {
     string title;
-    string description;
-    string constraints;
     string difficulty;
 };
 
@@ -20,8 +18,7 @@ type SharedChallenge record {|
     record {|
         string id;
         string title;
-        string description;
-        string constraints;
+        byte[] readmeFile;
         time:Civil createdTime;
         byte[] templateFile;
         string difficulty;
@@ -229,6 +226,27 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
+    resource function get challenges/[string challengeId]/readme()
+            returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
+        http:InternalServerError|http:NotFound {
+        record {|byte[] readmeFile;|}|persist:Error readmeFileRecord = self.db->/challenges/[challengeId];
+        if readmeFileRecord is persist:InvalidKeyError {
+            return http:NOT_FOUND;
+        } else if readmeFileRecord is persist:Error {
+            log:printError("Error while retrieving challenge radme by id", challengeId = challengeId,
+                'error = readmeFileRecord);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while retrieving readme file by the challenge '${challengeId}'`
+                }
+            };
+        } else {
+            http:Response response = new;
+            response.setBinaryPayload(readmeFileRecord.readmeFile);
+            return response;
+        }
+    }
+
     resource function get challenges/[string challengeId]/access() returns Payload|http:InternalServerError {
        do {
             ChallengeAccessAdminsOut[]|persist:Error result = getChallengeAdmins(self.db, challengeId) ?: [];
@@ -262,11 +280,11 @@ service /challengeService on new http:Listener(9096) {
     resource function post challenges(http:Request request)
             returns string|http:BadRequest|http:InternalServerError|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
-        // Check if the request has 7 body parts
-        if bodyParts.length() != 7 {
+        // Check if the request has 6 body parts
+        if bodyParts.length() != 6 {
             return <http:BadRequest>{
                 body: {
-                    message: string `Expects 7 bodyparts but found ${bodyParts.length()}`
+                    message: string `Expects 6 bodyparts but found ${bodyParts.length()}`
                 }
             };
         }
@@ -278,12 +296,11 @@ service /challengeService on new http:Listener(9096) {
         }
 
         // Check if all the required body parts are present
-        if !bodyPartMap.hasKey("title") || !bodyPartMap.hasKey("description") ||
-            !bodyPartMap.hasKey("constraints") || !bodyPartMap.hasKey("difficulty") ||
-            !bodyPartMap.hasKey("testCase") || !bodyPartMap.hasKey("template") || !bodyPartMap.hasKey("authorId") {
+        if !bodyPartMap.hasKey("title") || !bodyPartMap.hasKey("difficulty") ||
+            !bodyPartMap.hasKey("testCase") || !bodyPartMap.hasKey("template") || !bodyPartMap.hasKey("readme") || !bodyPartMap.hasKey("authorId") {
             return <http:BadRequest>{
                 body: {
-                    message: string `Expects 7 bodyparts with names 'title', 'description', 'constraints', 'difficulty', 'testCase' , 'author' and 'template'`
+                    message: string `Expects 6 bodyparts with names 'title', 'readme', 'difficulty', 'testCase' , 'author' and 'template'`
                 }
             };
         }
@@ -291,9 +308,8 @@ service /challengeService on new http:Listener(9096) {
         entities:Challenge entityChallenge = {
             id: uuid:createType4AsString(),
             title: check bodyPartMap.get("title").getText(),
-            description: check bodyPartMap.get("description").getText(),
             difficulty: check bodyPartMap.get("difficulty").getText(),
-            constraints: check bodyPartMap.get("constraints").getText(),
+            readmeFile: check readEntityToByteArray("readme", bodyPartMap),
             testCasesFile: check readEntityToByteArray("testCase", bodyPartMap),
             templateFile: check readEntityToByteArray("template", bodyPartMap),
             createdTime: time:utcToCivil(time:utcNow()),
@@ -363,10 +379,8 @@ service /challengeService on new http:Listener(9096) {
             returns UpdatedChallenge|http:InternalServerError|http:NotFound|error {
         entities:ChallengeUpdate challengeUpdate = {
             title: updatedChallenge.title,
-            description: updatedChallenge.description,
-            difficulty: updatedChallenge.difficulty,
-            constraints: updatedChallenge.constraints
-        };
+            difficulty: updatedChallenge.difficulty
+            };
 
         entities:Challenge|persist:Error challenge = self.db->/challenges/[challengeId].put(challengeUpdate);
         if challenge is persist:InvalidKeyError {
@@ -460,25 +474,21 @@ isolated function toDataModelChallenge(entities:Challenge challenge) returns dat
 {
     title: challenge.title,
     challengeId: challenge.id,
-    description: challenge.description,
     difficulty: challenge.difficulty,
     testCase: challenge.testCasesFile,
     template: challenge.templateFile,
-    constraints: challenge.constraints,
-    authorId: challenge.authorId
-};
+    authorId: challenge.authorId,
+    readme: challenge.readmeFile};
 
 isolated function toSharedChallenge(SharedChallenge challenge) returns data_model:Challenge =>
 {
     title: challenge.challenge.title,
     challengeId: challenge.challenge.id,
-    description: challenge.challenge.description,
     difficulty: challenge.challenge.difficulty,
     testCase: challenge.challenge.testCasesFile,
     template: challenge.challenge.templateFile,
-    constraints: challenge.challenge.constraints,
-    authorId: challenge.challenge.authorId
-};
+    authorId: challenge.challenge.authorId,
+    readme: challenge.challenge.readmeFile};
 
 function getChallengeAdmins(entities:Client db, string challengeId) returns ChallengeAccessAdminsOut[]|persist:Error? {
 

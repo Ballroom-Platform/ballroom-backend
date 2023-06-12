@@ -118,10 +118,14 @@ function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] su
         }
     ]);
 
+        time:Civil nowTime = time:utcToCivil(time:utcNow());
+        nowTime.hour = nowTime.hour + 5;
+        nowTime.minute = nowTime.minute + 30;
+
     _ = check db->/submissions.post([
         {
             id: submissionMessage.submissionId,
-            submittedTime: time:utcToCivil(time:utcNow()),
+            submittedTime: nowTime,
             score: 0,
             userId: submissionMessage.userId,
             challengeId: submissionMessage.challengeId,
