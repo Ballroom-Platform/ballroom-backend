@@ -75,6 +75,23 @@ type MyInternalServerError record {|
     record{|string message;|} body;
 |};
 
+type SubmissionData record {|
+    string id;
+    float score;
+    string contestId;
+    record {|
+        string id;
+        string fullname;
+        string username;
+    |} user;
+    time:Civil submittedTime;
+    record {|
+        string id;
+        string title;
+    |} challenge;
+|};
+
+
 # A service representing a network-accessible API
 # bound to port `9098`.
 # // TODO Remove this CORS config when the BFF is configured properly
@@ -129,6 +146,26 @@ service /contestService on new http:Listener(9098) {
             };
         } else {
             return contestsWithStatus;
+        }
+    }
+
+    resource function get contests/[string contestID]/report() 
+            returns http:InternalServerError|string[][]{
+        stream<SubmissionData, persist:Error?> submissionstream = self.db->/submissions;
+        string[][]|persist:Error csvContentdata = from var submission in submissionstream
+            where submission.contestId == contestID
+            select [submission.id, submission.challenge.id, submission.challenge.title, submission.user.id, submission.user.username, submission.user.fullname, timeToString(submission.submittedTime), submission.score.toString()];
+        if csvContentdata is persist:Error {
+            log:printError("Error while reading submission data", 'error = csvContentdata);
+            return <http:InternalServerError>{
+                body: {
+                    message: string `Error while reading submission data`
+                }
+            };
+        } else {
+        string[] headers = ["submissionId", "challengeId", "challageTitle", "userId", "userName", "fullname", "submittedTime", "score"];
+        string[][] csvContent1= [headers, ...csvContentdata];
+        return csvContent1;
         }
     }
 
@@ -720,4 +757,9 @@ function readEntityToTime(string entityName, map<mime:Entity> entityMap) returns
     };
 
     return time;
+}
+
+function timeToString(time:Civil time) returns string {
+    string timeString = time.year.toBalString() + "-" + time.month.toBalString() + "-" + time.day.toBalString() + " " + time.hour.toBalString() + ":" + time.minute.toBalString();
+    return timeString;
 }
