@@ -50,24 +50,17 @@ service /userService on new http:Listener(9095) {
         }
     }
 
-    resource function get users/all() returns data_model:User[]|http:NotFound|http:InternalServerError {
+    resource function get users(string? role) returns data_model:User[]|http:NotFound|http:InternalServerError {
         stream<entities:User, persist:Error?> userStream = db->/users;
-        data_model:User[]|persist:Error users = from entities:User user in userStream
-            select toDataModelUser(user);
-
-        if users is persist:Error {
-            log:printError("Error while retrieving users", 'error = users);
-            return http:INTERNAL_SERVER_ERROR;
+        data_model:User[]|persist:Error users = [];
+        if role != null {
+            users = from entities:User user in userStream
+                where user.role == role
+                select toDataModelUser(user);
         } else {
-            return users;
-        }
-    }
-
-    resource function get users(string role) returns data_model:User[]|http:NotFound|http:InternalServerError {
-        stream<entities:User, persist:Error?> userStream = db->/users;
-        data_model:User[]|persist:Error users = from entities:User user in userStream
-            where user.role == role
+            users = from entities:User user in userStream
             select toDataModelUser(user);
+        }
 
         if users is persist:Error {
             log:printError("Error while retrieving users", 'error = users);
