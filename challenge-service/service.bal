@@ -13,6 +13,10 @@ type UpdatedChallenge record {
     string difficulty;
 };
 
+type UserAccess record {
+    string userId;
+};
+
 type SharedChallenge record {|
     string userId;
     record {|
@@ -113,15 +117,25 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    resource function get challenges/[string difficulty]/owned/[string userId]() returns data_model:Challenge[]|http:InternalServerError|http:BadRequest {
-        if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
-            return http:BAD_REQUEST;
-        }
+    resource function get challenges/owned/[string userId](string? difficulty) returns data_model:Challenge[]|http:InternalServerError|http:BadRequest {
 
+        if difficulty != null {
+            if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
+                return http:BAD_REQUEST;
+            }
+        }
         stream<entities:Challenge, persist:Error?> challengeStream = self.db->/challenges;
-        entities:Challenge[]|persist:Error challenges = from var challenge in challengeStream
-            where challenge.difficulty == difficulty && challenge.authorId == userId
-            select challenge;
+
+        entities:Challenge[]|persist:Error challenges = [];
+        if difficulty != null {
+            challenges = from entities:Challenge challenge in challengeStream
+                where challenge.difficulty == difficulty && challenge.authorId == userId
+                select challenge;
+        } else {
+            challenges = from entities:Challenge challenge in challengeStream
+                where challenge.authorId == userId
+                select challenge;
+        }
 
         if challenges is persist:Error {
             log:printError("Error while retrieving challenges", 'error = challenges);
@@ -137,59 +151,27 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    resource function get challenges/owned/[string userId]() returns string[]|http:InternalServerError|http:BadRequest {
+    resource function get challenges/shared/[string userId](string? difficulty) returns data_model:Challenge[]|http:InternalServerError|http:BadRequest {
 
-        stream<entities:Challenge, persist:Error?> challengeStream = self.db->/challenges;
-
-        entities:Challenge[]|persist:Error challenges = from var challenge in challengeStream
-            where challenge.authorId == userId
-            select challenge;
-
-        if challenges is persist:Error {
-            log:printError("Error while retrieving challenges", 'error = challenges);
-            return <http:InternalServerError>{
-                body: {
-                    message: string `Error while retrieving challenges`
-                }
-            };
-        } else {
-            string[] challengeIds = from var challenge in challenges
-                select challenge.id;
-            return challengeIds;
-        }
-    }
-
-    resource function get challenges/shared/[string userId]() returns string[]|http:InternalServerError|http:BadRequest {
-
-        stream<SharedChallenge, persist:Error?> sharedChallenges = self.db->/challengeaccesses;
-        SharedChallenge[]|persist:Error challenges = from var sharedChallenge in sharedChallenges
-                where  sharedChallenge.userId == userId
-                select sharedChallenge;
-
-        if challenges is persist:Error {
-            log:printError("Error while retrieving challenges", 'error = challenges);
-            return <http:InternalServerError>{
-                body: {
-                    message: string `Error while retrieving challenges`
-                }
-            };
-        } else {
-            string[] challengeIds = from var challenge in challenges
-                select challenge.challenge.id;
-            return challengeIds;
-        }
-    }
-
-    resource function get challenges/[string difficulty]/shared/[string userId]() returns data_model:Challenge[]|http:InternalServerError|http:BadRequest {
-        if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
-            return http:BAD_REQUEST;
+        if difficulty != null {
+            if !(difficulty is "EASY" || difficulty is "MEDIUM" || difficulty is "HARD") {
+                return http:BAD_REQUEST;
+            }
         }
 
         stream<SharedChallenge, persist:Error?> sharedChallenges = self.db->/challengeaccesses;
-        SharedChallenge[]|persist:Error challenges = from var sharedChallenge in sharedChallenges
+
+        SharedChallenge[]|persist:Error challenges = [];
+        if difficulty != null {
+            challenges = from SharedChallenge sharedChallenge in sharedChallenges
                 where sharedChallenge.challenge.difficulty == difficulty && sharedChallenge.userId == userId
                 select sharedChallenge;
-
+        } else {
+            challenges = from SharedChallenge sharedChallenge in sharedChallenges
+                where sharedChallenge.userId == userId
+                select sharedChallenge;
+        }
+        
         if challenges is persist:Error {
             log:printError("Error while retrieving challenges", 'error = challenges);
             return <http:InternalServerError>{
@@ -247,33 +229,19 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    resource function get challenges/[string challengeId]/access() returns Payload|http:InternalServerError {
+    resource function get challenges/[string challengeId]/accessGrantedUsers() returns Payload|http:InternalServerError {
        do {
-            ChallengeAccessAdminsOut[]|persist:Error result = getChallengeAdmins(self.db, challengeId) ?: [];
+            ChallengeAccessAdminsOut[]|persist:Error result = getAccessGrantedUsers(self.db, challengeId) ?: [];
 
             Payload responsePayload = {
-                message: "Admin access table created",
+                message: "Challenge access granted users",
                 data: check result
             };
             return responsePayload;
 
         } on fail error e {
-            log:printError("Error while creating admin access table", 'error = e);
+            log:printError("Error while retreving accessgranted users", 'error = e);
             return http:INTERNAL_SERVER_ERROR;
-        }
-    }
-
-    resource function get challenges/accessgranted/[string challengeId]() returns string[]|http:InternalServerError|http:NotFound {
-        string[]|persist:Error users =  getAccessGrantedUsers(self.db, challengeId);
-        if users is persist:Error {
-            log:printError("Error while retrieving users", 'error = users);
-            return <http:InternalServerError>{
-                body: {
-                    message: string `Error while retrieving users`
-                }
-            };
-        } else {
-            return users;
         }
     }
 
@@ -328,8 +296,11 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    resource function post challenges/[string challengeId]/access/[string userId]()
+    resource function post challenges/[string challengeId]/access(@http:Payload UserAccess userAccess)
             returns string|http:BadRequest|http:InternalServerError {
+
+        string userId = userAccess.userId;
+
         stream<entities:ChallengeAccess, persist:Error?> challengeAccesses = self.db->/challengeaccesses;
 
         entities:ChallengeAccess[]|persist:Error duplicates = from var challengeAccess in challengeAccesses
@@ -415,7 +386,10 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    resource function delete challenges/[string challengeId]/access/[string userId]() returns http:InternalServerError|http:NotFound|http:Ok {
+    resource function delete challenges/[string challengeId]/access(@http:Payload UserAccess userAccess) returns http:InternalServerError|http:NotFound|http:Ok {
+
+        string userId = userAccess.userId;
+
         stream<entities:ChallengeAccess, persist:Error?> challengeAccessStream = self.db->/challengeaccesses;
         
         entities:ChallengeAccess[]|persist:Error challengeAccesses = from var challengeAccess in challengeAccessStream
@@ -490,7 +464,7 @@ isolated function toSharedChallenge(SharedChallenge challenge) returns data_mode
     authorId: challenge.challenge.authorId,
     readme: challenge.challenge.readmeFile};
 
-function getChallengeAdmins(entities:Client db, string challengeId) returns ChallengeAccessAdminsOut[]|persist:Error? {
+function getAccessGrantedUsers(entities:Client db, string challengeId) returns ChallengeAccessAdminsOut[]|persist:Error? {
 
     stream<ChallengeAccessAdmins, persist:Error?> challengeAccessStream = db->/challengeaccesses;
 
@@ -512,20 +486,3 @@ function toChallengeAccessAdminsOut( ChallengeAccessAdmins challengeAccess) retu
     userName: challengeAccess.user.username,
     fullName: challengeAccess.user.fullname
 };
-
-function getAccessGrantedUsers(entities:Client db, string challengeId) returns string[]|persist:Error {
-
-    stream<entities:ChallengeAccess, persist:Error?> challengeAccessStream = db->/challengeaccesses;
-
-    entities:ChallengeAccess[]|persist:Error challengeAccesses = from var challengeAccess in challengeAccessStream
-        select challengeAccess;
-
-    if challengeAccesses is persist:Error {
-        log:printError("Error while reading contests data", 'error = challengeAccesses);
-        return challengeAccesses;
-    } else {
-        return from var challengeAccess in challengeAccesses
-            where challengeAccess.challengeId == challengeId
-            select challengeAccess.userId;
-    }
-}
