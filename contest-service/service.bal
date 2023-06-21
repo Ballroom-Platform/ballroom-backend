@@ -16,6 +16,11 @@ type UpdatedContest record {
     string moderator;
 };
 
+type UserAccess record {
+    string userId;
+    string accessType;
+};
+
 type NewContest record {
     string title;
     byte[] readmeFile;
@@ -149,11 +154,11 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/[string contestID]/report() 
+    resource function get contests/report/[string contestId]() 
             returns http:InternalServerError|string[][]{
         stream<SubmissionData, persist:Error?> submissionstream = self.db->/submissions;
         string[][]|persist:Error csvContentdata = from var submission in submissionstream
-            where submission.contestId == contestID
+            where submission.contestId == contestId
             select [submission.id, submission.challenge.id, submission.challenge.title, submission.user.id, submission.user.username, submission.user.fullname, timeToString(submission.submittedTime), submission.score.toString()];
         if csvContentdata is persist:Error {
             log:printError("Error while reading submission data", 'error = csvContentdata);
@@ -164,13 +169,13 @@ service /contestService on new http:Listener(9098) {
             };
         } else {
         string[] headers = ["submissionId", "challengeId", "challageTitle", "userId", "userName", "fullname", "submittedTime", "score"];
-        string[][] csvContent1= [headers, ...csvContentdata];
-        return csvContent1;
+        string[][] csvData= [headers, ...csvContentdata];
+        return csvData;
         }
     }
 
-     resource function get contests/[string status]/[string userId]/registered()
-            returns data_model:Contest[]|MyInternalServerError|http:NotFound|error {
+    resource function get contests/[string userId]/registered(string status)
+            returns data_model:Contest[]|MyInternalServerError {
 
         stream<entities:Registrants, persist:Error?> registrantstream = self.db->/registrants;
 
@@ -188,7 +193,6 @@ service /contestService on new http:Listener(9098) {
         } else {
             stream<entities:Contest, persist:Error?> contestStream = self.db->/contests;
 
-            //iterrate through the contest stream and filter the contests that are registered by the user
             data_model:Contest[]|persist:Error contests = from var contest in contestStream
                 from var registeredContestId in registeredContestIds
                 where contest.id == registeredContestId && compareTime(contest.startTime, contest.endTime) == status
@@ -207,7 +211,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/[string status]/owned/[string userId]() returns data_model:Contest[]|http:InternalServerError|http:NotFound {
+    resource function get contests/owned/[string userId](string status) returns data_model:Contest[]|http:InternalServerError|http:NotFound {
 
         data_model:Contest[]|persist:Error contests = getOwnerContests(self.db, userId, status);
         if contests is persist:Error {
@@ -222,7 +226,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/[string status]/shared/[string userId]() returns SharedContestOut[]|http:InternalServerError|http:NotFound {
+    resource function get contests/shared/[string userId](string status) returns SharedContestOut[]|http:InternalServerError|http:NotFound {
 
         SharedContestOut[]|persist:Error contests = getSharedContests(self.db, userId, status);
         if contests is persist:Error {
@@ -237,35 +241,22 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/accessgranted/[string contestId]() returns string[]|http:InternalServerError|http:NotFound {
-        string[]|persist:Error users = getAccessGrantedUsers(self.db, contestId);
-        if users is persist:Error {
-            log:printError("Error while retrieving users", 'error = users);
-            return <http:InternalServerError>{
-                body: {
-                    message: string `Error while retrieving users`
-                }
-            };
-        } else {
-            return users;
-        }
-    }
-
-    resource function get contests/[string contestId]/access() returns Payload|http:InternalServerError {
+    resource function get contests/[string contestId]/accessGrantedUsers() returns Payload|http:InternalServerError {
         do {
-            contestAccessAdminsOut[]|persist:Error result = getContestAdmins(self.db, contestId) ?: [];
+            contestAccessAdminsOut[]|persist:Error result = getAccessGrantedUsers(self.db, contestId) ?: [];
 
             Payload responsePayload = {
-                message: "Admin access table created",
+                message: "Contest access granted users",
                 data: check result
             };
             return responsePayload;
 
         } on fail error e {
-            log:printError("Error while creating admin access table", 'error = e);
+            log:printError("Error while retreving accessgranted userd", 'error = e);
             return http:INTERNAL_SERVER_ERROR;
         }
     }
+
     resource function get contests/[string contestId]/challenges() returns string[]|http:InternalServerError {
         string[]|persist:Error contestChallenges = getContestChallenges(self.db, contestId);
         if contestChallenges is persist:Error {
@@ -280,7 +271,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-        resource function get contests/[string contestId]/readme()
+    resource function get contests/[string contestId]/readme()
             returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
         http:InternalServerError|http:NotFound {
         record {|byte[] readmeFile;|}|persist:Error readmeFileRecord = self.db->/contests/[contestId];
@@ -395,8 +386,11 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function post contests/[string contestId]/access/[string userId]/[string accessType]() returns string|http:BadRequest|http:InternalServerError {
-        // Check for duplications.
+    resource function post contests/[string contestId]/access(@http:Payload UserAccess userAccess) returns string|http:BadRequest|http:InternalServerError {
+
+        string userId = userAccess.userId;
+        string accessType = userAccess.accessType;
+
         stream<entities:contestAccess, persist:Error?> contestAccesses = self.db->/contestaccesses;
 
         entities:contestAccess[]|persist:Error duplicates = from var contestAccess in contestAccesses
@@ -609,24 +603,7 @@ function toSharedContestOut(SharedContest contest) returns SharedContestOut => {
     accessType: contest.accessType
 };
 
-function getAccessGrantedUsers(entities:Client db, string contestId) returns string[]|persist:Error {
-
-    stream<entities:contestAccess, persist:Error?> contestAccessStream = db->/contestaccesses;
-
-    entities:contestAccess[]|persist:Error contestAccesses = from var contestAccess in contestAccessStream
-        select contestAccess;
-
-    if contestAccesses is persist:Error {
-        log:printError("Error while reading contests data", 'error = contestAccesses);
-        return contestAccesses;
-    } else {
-        return from var contestAccess in contestAccesses
-            where contestAccess.contestId == contestId
-            select contestAccess.userId;
-    }
-}
-
-function getContestAdmins(entities:Client db, string contestId) returns contestAccessAdminsOut[]|persist:Error? {
+function getAccessGrantedUsers(entities:Client db, string contestId) returns contestAccessAdminsOut[]|persist:Error? {
 
     stream<contestAccessAdmins, persist:Error?> contestAccessStream = db->/contestaccesses;
 
