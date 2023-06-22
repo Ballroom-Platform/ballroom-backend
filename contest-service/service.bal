@@ -18,7 +18,7 @@ type UpdatedContest record {
 
 type UserAccess record {
     string userId;
-    string accessType;
+    string accessType?;
 };
 
 type NewContest record {
@@ -389,7 +389,7 @@ service /contestService on new http:Listener(9098) {
     resource function post contests/[string contestId]/access(@http:Payload UserAccess userAccess) returns string|http:BadRequest|http:InternalServerError {
 
         string userId = userAccess.userId;
-        string accessType = userAccess.accessType;
+        string? accessType = userAccess.accessType;
 
         stream<entities:contestAccess, persist:Error?> contestAccesses = self.db->/contestaccesses;
 
@@ -413,24 +413,32 @@ service /contestService on new http:Listener(9098) {
             };
         }
 
-        string[]|persist:Error insertedIds = self.db->/contestaccesses.post([
-            {
-                id: uuid:createType4AsString(),
-                contestId: contestId,
-                userId: userId,
-                accessType: accessType
+        if accessType != null {
+            string[]|persist:Error insertedIds = self.db->/contestaccesses.post([
+                {
+                    id: uuid:createType4AsString(),
+                    contestId: contestId,
+                    userId: userId,
+                    accessType: accessType
+                }
+            ]);
+            if insertedIds is persist:Error {
+                log:printError("Error while adding admin to contest", 'error = insertedIds);
+                return <http:InternalServerError>{
+                    body: {
+                        message: string `Error while adding admin to contest`
+                    }
+                };
+            } else {
+                return insertedIds[0];
             }
-        ]);
-
-        if insertedIds is persist:Error {
-            log:printError("Error while adding admin to contest", 'error = insertedIds);
+        } else {
+            log:printError("Error while adding admin to contest");
             return <http:InternalServerError>{
                 body: {
                     message: string `Error while adding admin to contest`
                 }
             };
-        } else {
-            return insertedIds[0];
         }
     }
 
@@ -474,7 +482,10 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function delete contests/[string contestId]/access/[string userId]() returns http:InternalServerError|http:NotFound|http:Ok {
+    resource function delete contests/[string contestId]/access(@http:Payload UserAccess userAccess) returns http:InternalServerError|http:NotFound|http:Ok {
+
+        string userId = userAccess.userId;
+
         stream<entities:contestAccess, persist:Error?> contestAccessStream = self.db->/contestaccesses;
 
         entities:contestAccess[]|persist:Error contestAccesses = from var contestAccess in contestAccessStream
