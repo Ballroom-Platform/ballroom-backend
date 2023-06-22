@@ -229,7 +229,7 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    resource function get challenges/[string challengeId]/accessGrantedUsers() returns Payload|http:InternalServerError {
+    resource function get challenges/[string challengeId]/users\-with\-access() returns Payload|http:InternalServerError {
        do {
             ChallengeAccessAdminsOut[]|persist:Error result = getAccessGrantedUsers(self.db, challengeId) ?: [];
 
@@ -296,7 +296,7 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    resource function post challenges/[string challengeId]/access(@http:Payload UserAccess userAccess)
+    resource function post challenges/[string challengeId]/users\-with\-access(@http:Payload UserAccess userAccess)
             returns string|http:BadRequest|http:InternalServerError {
 
         string userId = userAccess.userId;
@@ -386,7 +386,7 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    resource function delete challenges/[string challengeId]/access(@http:Payload UserAccess userAccess) returns http:InternalServerError|http:NotFound|http:Ok {
+    resource function delete challenges/[string challengeId]/users\-with\-access(@http:Payload UserAccess userAccess) returns http:InternalServerError|http:NotFound|http:Ok {
 
         string userId = userAccess.userId;
 

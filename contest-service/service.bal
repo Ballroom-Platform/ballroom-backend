@@ -154,8 +154,8 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/report/[string contestId]() 
-            returns http:InternalServerError|string[][]{
+    resource function get contests/[string contestId]/report()
+            returns http:InternalServerError|string[][] {
         stream<SubmissionData, persist:Error?> submissionstream = self.db->/submissions;
         string[][]|persist:Error csvContentdata = from var submission in submissionstream
             where submission.contestId == contestId
@@ -174,7 +174,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/[string userId]/registered(string status)
+    resource function get contests/[string userId]/registered()
             returns data_model:Contest[]|MyInternalServerError {
 
         stream<entities:Registrants, persist:Error?> registrantstream = self.db->/registrants;
@@ -195,7 +195,7 @@ service /contestService on new http:Listener(9098) {
 
             data_model:Contest[]|persist:Error contests = from var contest in contestStream
                 from var registeredContestId in registeredContestIds
-                where contest.id == registeredContestId && compareTime(contest.startTime, contest.endTime) == status
+                where contest.id == registeredContestId
                 select toDataModelContest(contest);
             
             if contests is persist:Error {
@@ -241,7 +241,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/[string contestId]/accessGrantedUsers() returns Payload|http:InternalServerError {
+    resource function get contests/[string contestId]/users\-with\-access() returns Payload|http:InternalServerError {
         do {
             contestAccessAdminsOut[]|persist:Error result = getAccessGrantedUsers(self.db, contestId) ?: [];
 
@@ -386,7 +386,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function post contests/[string contestId]/access(@http:Payload UserAccess userAccess) returns string|http:BadRequest|http:InternalServerError {
+    resource function post contests/[string contestId]/users\-with\-access(@http:Payload UserAccess userAccess) returns string|http:BadRequest|http:InternalServerError {
 
         string userId = userAccess.userId;
         string? accessType = userAccess.accessType;
@@ -482,7 +482,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function delete contests/[string contestId]/access(@http:Payload UserAccess userAccess) returns http:InternalServerError|http:NotFound|http:Ok {
+    resource function delete contests/[string contestId]/users\-with\-access(@http:Payload UserAccess userAccess) returns http:InternalServerError|http:NotFound|http:Ok {
 
         string userId = userAccess.userId;
 

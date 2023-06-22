@@ -1,7 +1,7 @@
 tokenAudience = "ballroomBFF"
 tokenIssuer = "ballroomSTS"
 
-Authorization = "Basic SG1IUlZjOE1qcFByVGFkcjQxODVvS0xQaW5BYTpSTmhOMkdBcGFyNzRxdkRIcU1FYXd2Ymx6bXdh"
+Authorization = "Basic {base64_encode(client_id:client_secret)}"
 userServiceUrl = "http://localhost:9095/userService"
 idpUrl = "https://api.asgardeo.io/t/ballroomhackathon/oauth2"
 

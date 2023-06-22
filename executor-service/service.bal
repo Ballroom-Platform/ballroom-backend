@@ -8,6 +8,10 @@ import ballroom/entities;
 import executor_service.utils as utils;
 import ballerina/persist;
 
+type challengeDifficulty record {|
+    string difficulty;
+|};
+
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
 
@@ -121,14 +125,14 @@ function calculateScore(string[] executeCommandResult, string challengeId) retur
         }
     }
     if totalTests > 0 {
-        entities:Challenge|persist:Error challengeDifficulty = db->/challenges/[challengeId]();
+        challengeDifficulty|persist:Error challengeDifficulty = db->/challenges/[challengeId]();
         if challengeDifficulty is error {
             return challengeDifficulty;
-        } else if (challengeDifficulty.difficulty == "EASY") {
+        } else if challengeDifficulty.difficulty == "EASY" {
             score = (10.0 * <float>passingTests) / <float>totalTests;
-        } else if (challengeDifficulty.difficulty == "MEDIUM") {
+        } else if challengeDifficulty.difficulty == "MEDIUM" {
             score = (20.0 * <float>passingTests) / <float>totalTests;
-        } else if (challengeDifficulty.difficulty == "HARD") {
+        } else if challengeDifficulty.difficulty == "HARD" {
             score = (30.0 * <float>passingTests) / <float>totalTests;
         }
     }
