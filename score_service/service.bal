@@ -209,6 +209,63 @@ service /submissionService on new http:Listener(9092) {
         };
         return responsePayload;
     }
+
+    resource function get scoreboard/[string contestId]/[string userId]() returns http:InternalServerError|Payload {
+        // Since bal persit does not support complicated database joins and aggregations. 
+        // The following code performs an in-memory join and aggregation.
+
+        // Retrieve all submissions
+        // Filter out submissions that doesnt match with the contest 
+        stream<ScoreBoard, persist:Error?> submissionStream = db->/submissions;
+        ScoreBoard[]|persist:Error submissions = from var submission in submissionStream
+            where submission.contestId == contestId && submission.userId == userId
+            select submission;
+        if submissions is persist:Error {
+            log:printError("Error while retrieving submissions", contestId = contestId, 'error = submissions);
+            return http:INTERNAL_SERVER_ERROR;
+        }
+
+        // Group submissions by challenge
+        // challenge ids are keys of the map
+        map<ScoreBoard[]> submissionsByChallenge = {};
+        foreach var submission in submissions {
+            string challengeId = submission.challenge.id;
+            if (submissionsByChallenge[challengeId] is ()) {
+                submissionsByChallenge[challengeId] = [];
+            }
+            submissionsByChallenge.get(challengeId).push(submission);
+        }
+
+        // Find the submission with the max score for each challenge
+        map<ScoreBoard> submissionWithMaxScoreByChallenge = {};
+        foreach var challengeId in submissionsByChallenge.keys() {
+            ScoreBoard[] submissionsByChallengeId = submissionsByChallenge.get(challengeId);
+            ScoreBoard submissionWithMaxScore = submissionsByChallengeId[0];
+            foreach var submission in submissionsByChallengeId {
+                if (submission.score > submissionWithMaxScore.score) {
+                    submissionWithMaxScore = submission;
+                }
+            }
+            submissionWithMaxScoreByChallenge[challengeId] = submissionWithMaxScore;
+        }
+
+        // add to scoreboardout 
+        ScoreBoardOut[] scoreboard = [];
+        foreach var submission in submissionWithMaxScoreByChallenge {
+            ScoreBoardOut scoreBoardOut = {
+                score: submission.score,
+                submittedTime: submission.submittedTime,
+                title: submission.challenge.title
+            };
+            scoreboard.push(scoreBoardOut);
+        }
+        
+        Payload responsePayload = {
+            message: "Scoreboard created",
+            data: scoreboard
+        };
+        return responsePayload;
+    }
 }
 
 type SubmissionWithUserData record {|
@@ -227,5 +284,24 @@ type SubmissionsByUser record {|
     string fullname;
     SubmissionWithUserData[] submissions;
 |};
+
+type ScoreBoard record {|
+    string id;
+    float score;
+    string userId;
+    string contestId;
+    time:Civil submittedTime;
+    record {|
+        string id;
+        string title;
+    |} challenge;
+|};
+
+type ScoreBoardOut record {|
+    float score;
+    time:Civil submittedTime;
+    string title;
+|};
+
 
 

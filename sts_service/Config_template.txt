@@ -1,8 +1,9 @@
 tokenAudience = "ballroomBFF"
 tokenIssuer = "ballroomSTS"
 
+Authorization = "Basic {base64_encode(client_id:client_secret)}"
 userServiceUrl = "http://localhost:9095/userService"
-idpUrl = "https://api.asgardeo.io/t/ravin/oauth2"
+idpUrl = "https://api.asgardeo.io/t/ballroomhackathon/oauth2"
 
 [ballroom.entities]
 host = "localhost"

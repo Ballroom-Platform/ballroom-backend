@@ -8,6 +8,10 @@ import ballroom/entities;
 import executor_service.utils as utils;
 import ballerina/persist;
 
+type challengeDifficulty record {|
+    string difficulty;
+|};
+
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
 
@@ -76,7 +80,7 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     string[] testCommand = ["cd " + storedLocation + " && bal test"];
 
     string[] executeCommandResult = check executeCommand(testCommand);
-    float score = check calculateScore(executeCommandResult);
+    float score = check calculateScore(executeCommandResult, submissionEvent.challengeId);
 
     data_model:ScoredSubmissionMessage scoredSubMsg = {subMsg: submissionEvent, score: score};
     log:printInfo("Scored submission message: ", scoreSubmission = scoredSubMsg);
@@ -85,7 +89,7 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     return scoredSubMsg;
 }
 
-function calculateScore(string[] executeCommandResult) returns float|error {
+function calculateScore(string[] executeCommandResult, string challengeId) returns float|error {
 
     string balCommandOutput = "";
     float score = 0.0;
@@ -121,7 +125,16 @@ function calculateScore(string[] executeCommandResult) returns float|error {
         }
     }
     if totalTests > 0 {
-        score = (10.0 * <float>passingTests) / <float>totalTests;
+        challengeDifficulty|persist:Error challengeDifficulty = db->/challenges/[challengeId]();
+        if challengeDifficulty is error {
+            return challengeDifficulty;
+        } else if challengeDifficulty.difficulty == "EASY" {
+            score = (10.0 * <float>passingTests) / <float>totalTests;
+        } else if challengeDifficulty.difficulty == "MEDIUM" {
+            score = (20.0 * <float>passingTests) / <float>totalTests;
+        } else if challengeDifficulty.difficulty == "HARD" {
+            score = (30.0 * <float>passingTests) / <float>totalTests;
+        }
     }
     return score;
 }

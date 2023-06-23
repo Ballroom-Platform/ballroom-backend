@@ -9,6 +9,7 @@ import ballerina/persist;
 
 configurable string userServiceUrl = ?;
 configurable string idpUrl = ?;
+configurable string Authorization = ?;
 
 @display {
     label: "User Service",
@@ -30,7 +31,7 @@ public isolated function verifyIDPToken(string header) returns json|error {
     headers = ({
         "Content-Type": "application/x-www-form-urlencoded",
         "Connection": "keep-alive",
-        "Authorization": "Basic dEJkVG42NjVtV2F5d2d6bTdkc1MyYUZ4MzVvYTpBS3V3enBORlVCbHBwdjhyazduSFFVQVlNWTBh"
+        "Authorization": Authorization
     })
         , message = "token=" + idpToken,
         targetType = json);

@@ -12,13 +12,16 @@ type User record {|
 	UsersOnContests[] registeredContests;
 	Submission[] submissions;
 	RefreshToken[] refreshtokens;
+	contestAccess[] contestaccess;
+	ChallengeAccess[] challengeaccess;
+	Challenge[] challenge;
+	Registrants[] registrants;
 |};
 
 type Contest record {|
     readonly string id;
     string title;
-    // TODO VARCHAR(1000)
-    string description;
+    byte[] readmeFile;
     // MySQL type => TIMESTAMP
     time:Civil startTime;
     time:Civil endTime;
@@ -28,6 +31,8 @@ type Contest record {|
 	ChallengesOnContests[] challenges;
 	UsersOnContests[] registeredUsers;
 	Submission[] submissions;
+	contestAccess[] contestaccess;
+	Registrants[] registrants;
 |};
 
 // enum Difficulty {
@@ -39,17 +44,16 @@ type Contest record {|
 type Challenge record {|
     readonly string id;
     string title;
-    // TODO VARCHAR(1000)
-    string description;
-    // TODO VARCHAR(500)
-    string constraints;
     time:Civil createdTime;
     byte[] templateFile;
+    byte[] readmeFile;
     // difficulty ENUM('EASY', 'MEDIUM', 'HARD') NOT NULL,
     string difficulty;
     byte[] testCasesFile;
 	ChallengesOnContests[] contests;
 	Submission[] submissions;
+	ChallengeAccess[] challengeaccess;
+    User author;
 |};
 
 // Many-to-many relations between Challenge and Contest
@@ -92,4 +96,26 @@ type RefreshToken record {|
     // VARCHAR(1000)
     string token;
     User user;
+|};
+
+// Many-to-many relations between user and Contest
+type contestAccess record {|
+    readonly string id;
+    Contest contest;
+    User user;
+    string accessType;
+|};
+
+// Many-to-many relations between user and Challenge
+type ChallengeAccess record {|
+    readonly string id;
+    Challenge challenge;
+    User user;
+|};
+
+type Registrants record {|
+    readonly string id;
+    time:Civil registeredTime;
+    User user;
+    Contest contest;
 |};
