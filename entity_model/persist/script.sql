@@ -1,4 +1,3 @@
--- Active: 1683109579686@@127.0.0.1@3306@ballroomdb
 
 -- AUTO-GENERATED FILE.
 
