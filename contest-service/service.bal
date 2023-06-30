@@ -96,7 +96,7 @@ type SubmissionData record {|
     |} challenge;
 |};
 
-type RegistrantInfor record {|
+type RegistrantInfo record {|
     string id;
     record {|
         string id;
@@ -233,7 +233,7 @@ service /contestService on new http:Listener(9098) {
     resource function get contests/[string contestId]/registrants()
             returns Registrant[]|http:InternalServerError|http:NotFound {
 
-        stream<RegistrantInfor, persist:Error?> registrantstream = self.db->/registrants;
+        stream<RegistrantInfo, persist:Error?> registrantstream = self.db->/registrants;
 
         Registrant[]|persist:Error registrants = from var registrant in registrantstream
             where registrant.contest.id == contestId
@@ -836,7 +836,7 @@ function timeToString(time:Civil time) returns string {
     return timeString;
 }
 
-function toRegistrantsOut(RegistrantInfor registrant) returns Registrant => {
+function toRegistrantsOut(RegistrantInfo registrant) returns Registrant => {
     id: registrant.id,
     contestId: registrant.contest.id,
     userId: registrant.user.id,
