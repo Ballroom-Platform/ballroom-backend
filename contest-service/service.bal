@@ -96,7 +96,7 @@ type SubmissionData record {|
     |} challenge;
 |};
 
-type registrant record {|
+type RegistrantInfor record {|
     string id;
     record {|
         string id;
@@ -108,7 +108,7 @@ type registrant record {|
     time:Civil registeredTime;
 |};
 
-type registrantOut record {
+type Registrant record {
     string id;
     string contestId;
     string userId;
@@ -141,14 +141,14 @@ service /contestService on new http:Listener(9098) {
     }
 
     resource function get contests/[string contestId]()
-            returns data_model:Contest|MyInternalServerError|http:NotFound {
+            returns data_model:Contest|http:InternalServerError|http:NotFound {
 
         entities:Contest|persist:Error entityContest = self.db->/contests/[contestId];
         if entityContest is persist:InvalidKeyError {
             return http:NOT_FOUND;
         } else if entityContest is persist:Error {
             log:printError("Error while retrieving contest by id", contestId = contestId, 'error = entityContest);
-            return <MyInternalServerError>{
+            return <http:InternalServerError>{
                 body: {
                     message: string `Error while retrieving contest by ${contestId}`
                 }
@@ -194,7 +194,7 @@ service /contestService on new http:Listener(9098) {
     }
 
     resource function get contests/[string userId]/registered()
-            returns data_model:Contest[]|MyInternalServerError {
+            returns data_model:Contest[]|http:InternalServerError {
 
         stream<entities:Registrants, persist:Error?> registrantstream = self.db->/registrants;
 
@@ -204,7 +204,7 @@ service /contestService on new http:Listener(9098) {
 
         if registeredContestIds is persist:Error {
             log:printError("Error while reading registrants data", 'error = registeredContestIds);
-            return <MyInternalServerError>{
+            return <http:InternalServerError>{
                 body: {
                     message: string `Error while reading registrants data`
                 }
@@ -219,7 +219,7 @@ service /contestService on new http:Listener(9098) {
 
             if contests is persist:Error {
                 log:printError("Error while reading contests data", 'error = contests);
-                return <MyInternalServerError>{
+                return <http:InternalServerError>{
                     body: {
                         message: string `Error while reading contests data`
                     }
@@ -231,11 +231,11 @@ service /contestService on new http:Listener(9098) {
     }
 
     resource function get contests/[string contestId]/registrants()
-            returns registrantOut[]|MyInternalServerError|http:NotFound {
+            returns Registrant[]|http:InternalServerError|http:NotFound {
 
-        stream<registrant, persist:Error?> registrantstream = self.db->/registrants;
+        stream<RegistrantInfor, persist:Error?> registrantstream = self.db->/registrants;
 
-        registrantOut[]|persist:Error registrants = from var registrant in registrantstream
+        Registrant[]|persist:Error registrants = from var registrant in registrantstream
             where registrant.contest.id == contestId
             select toRegistrantsOut(registrant);
 
@@ -243,7 +243,7 @@ service /contestService on new http:Listener(9098) {
             return http:NOT_FOUND;
         } else if registrants is persist:Error {
             log:printError("Error while retrieving registrants by id", contestId = contestId, 'error = registrants);
-            return <MyInternalServerError>{
+            return <http:InternalServerError>{
                 body: {
                     message: string `Error while retrieving registrants by ${contestId}`
                 }
@@ -484,7 +484,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function post contests/[string contestId]/register/[string userId]() returns string|http:InternalServerError|http:BadRequest {
+    resource function post contests/[string contestId]/registrants/[string userId]() returns string|http:InternalServerError|http:BadRequest {
 
         stream<entities:Registrants, persist:Error?> registrants = self.db->/registrants;
         entities:Registrants[]|persist:Error duplicates = from var registrant in registrants
@@ -836,7 +836,7 @@ function timeToString(time:Civil time) returns string {
     return timeString;
 }
 
-function toRegistrantsOut(registrant registrant) returns registrantOut => {
+function toRegistrantsOut(RegistrantInfor registrant) returns Registrant => {
     id: registrant.id,
     contestId: registrant.contest.id,
     userId: registrant.user.id,
