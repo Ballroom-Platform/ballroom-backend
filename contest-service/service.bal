@@ -10,10 +10,10 @@ import ballerina/mime;
 import ballerina/io;
 
 type UpdatedContest record {
-    string title;
-    time:Civil startTime;
-    time:Civil endTime;
-    string moderator;
+    string title?;
+    time:Civil startTime?;
+    time:Civil endTime?;
+    byte[] readmeFile?;
 };
 
 type UserAccess record {
@@ -144,7 +144,7 @@ service /contestService on new http:Listener(9098) {
             returns data_model:Contest|http:InternalServerError|http:NotFound {
 
         entities:Contest|persist:Error entityContest = self.db->/contests/[contestId];
-        if entityContest is persist:InvalidKeyError {
+        if entityContest is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if entityContest is persist:Error {
             log:printError("Error while retrieving contest by id", contestId = contestId, 'error = entityContest);
@@ -158,18 +158,18 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests(string? status)
+    resource function get contests() 
             returns data_model:Contest[]|http:InternalServerError|http:NotFound {
-        data_model:Contest[]|persist:Error contestsWithStatus = getContestsWithStatus(self.db, status ?: "future");
-        if contestsWithStatus is persist:Error {
-            log:printError("Error while retrieving contests", 'error = contestsWithStatus);
+        data_model:Contest[]|persist:Error contests = getContests(self.db);
+        if contests is persist:Error {
+            log:printError("Error while retrieving contests", 'error = contests);
             return <http:InternalServerError>{
                 body: {
                     message: string `Error while retrieving contests`
                 }
             };
         } else {
-            return contestsWithStatus;
+            return contests;
         }
     }
 
@@ -239,7 +239,7 @@ service /contestService on new http:Listener(9098) {
             where registrant.contest.id == contestId
             select toRegistrantsOut(registrant);
 
-        if registrants is persist:InvalidKeyError {
+        if registrants is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if registrants is persist:Error {
             log:printError("Error while retrieving registrants by id", contestId = contestId, 'error = registrants);
@@ -253,9 +253,9 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/owned/[string userId](string status) returns data_model:Contest[]|http:InternalServerError|http:NotFound {
+        resource function get contests/owned/[string userId]() returns data_model:Contest[]|http:InternalServerError|http:NotFound {
 
-        data_model:Contest[]|persist:Error contests = getOwnerContests(self.db, userId, status);
+        data_model:Contest[]|persist:Error contests = getOwnerContests(self.db, userId);
         if contests is persist:Error {
             log:printError("Error while retrieving contests", 'error = contests);
             return <http:InternalServerError>{
@@ -268,9 +268,9 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests/shared/[string userId](string status) returns SharedContestOut[]|http:InternalServerError|http:NotFound {
+    resource function get contests/shared/[string userId]() returns SharedContestOut[]|http:InternalServerError|http:NotFound {
 
-        SharedContestOut[]|persist:Error contests = getSharedContests(self.db, userId, status);
+        SharedContestOut[]|persist:Error contests = getSharedContests(self.db, userId);
         if contests is persist:Error {
             log:printError("Error while retrieving contests", 'error = contests);
             return <http:InternalServerError>{
@@ -317,7 +317,7 @@ service /contestService on new http:Listener(9098) {
             returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
         http:InternalServerError|http:NotFound {
         record {|byte[] readmeFile;|}|persist:Error readmeFileRecord = self.db->/contests/[contestId];
-        if readmeFileRecord is persist:InvalidKeyError {
+        if readmeFileRecord is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if readmeFileRecord is persist:Error {
             log:printError("Error while retrieving contest radme by id", contestId = contestId,
@@ -528,16 +528,93 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function put contests/[string contestId](@http:Payload UpdatedContest toBeUpdatedContest)
+resource function put contests/[string contestId](http:Request request)
             returns UpdatedContest|http:InternalServerError|http:NotFound {
-        entities:ContestUpdate contestUpdate = {
-            title: toBeUpdatedContest.title,
-            startTime: toBeUpdatedContest.startTime,
-            endTime: toBeUpdatedContest.endTime,
-            moderatorId: toBeUpdatedContest.moderator
-        };
+
+        data_model:Contest contestData = {
+            contestId: "", 
+            moderator: "", 
+            startTime: {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0}, 
+            readme: [], 
+            endTime: {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0}, 
+            title: ""};
+
+        string title = "";
+        time:Civil startTime = {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0};
+        time:Civil endTime = {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0};
+        byte[] readme = [];
+
+        entities:Contest|persist:Error entityContest = self.db->/contests/[contestId];
+        if entityContest is persist:NotFoundError {
+            return http:NOT_FOUND;
+        } else if entityContest is persist:Error {
+            log:printError("Error while retrieving contest by id", contestId = contestId, 'error = entityContest);
+            return <MyInternalServerError> {
+                body: {
+                    message: string `Error while retrieving contest by ${contestId}`
+                }
+            };
+        } else {
+            contestData.contestId = entityContest.id;
+            contestData.moderator = entityContest.moderatorId;
+            contestData.startTime = entityContest.startTime;
+            contestData.readme = entityContest.readmeFile;
+            contestData.endTime = entityContest.endTime;
+            contestData.title = entityContest.title;
+        }
+
+        mime:Entity[]|http:ClientError bodyParts = request.getBodyParts();
+        map<mime:Entity> bodyPartMap = {};
+        if bodyParts is http:ClientError {
+            return <http:InternalServerError>{
+                body: {
+                    message: bodyParts.toString()
+                }
+            };
+        }
+        else {
+            foreach mime:Entity entity in bodyParts {
+                bodyPartMap[entity.getContentDisposition().name] = entity;
+            }
+        }
+        entities:ContestUpdate contestUpdate = {};
+        do {
+            if bodyPartMap.hasKey("title") {
+                title = check bodyPartMap.get("title").getText();
+            } else {
+                title = contestData.title;
+            }
+            if bodyPartMap.hasKey("startTime") {
+                startTime = check readEntityToTime("startTime", bodyPartMap);
+            } else {
+                startTime = contestData.startTime;
+            }
+            if bodyPartMap.hasKey("endTime") {
+                endTime = check readEntityToTime("endTime", bodyPartMap);
+            } else {
+                endTime = contestData.endTime;
+            }
+            if bodyPartMap.hasKey("readme") {
+                readme = check readEntityToByteArray("readme", bodyPartMap);
+            } else {
+                readme = contestData.readme;
+            }
+	        contestUpdate = {
+                title: title,
+                startTime: startTime,
+                endTime: endTime,
+                readmeFile: readme
+	            };
+        } on fail var e {
+        	return <http:InternalServerError>{
+                body: {
+                    message:e.message()
+                }
+            };
+        }
+
         entities:Contest|persist:Error updatedContest = self.db->/contests/[contestId].put(contestUpdate);
-        if updatedContest is persist:InvalidKeyError {
+        if updatedContest is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if updatedContest is persist:Error {
             log:printError("Error while updating contest", contestId = contestId, 'error = updatedContest);
@@ -547,14 +624,21 @@ service /contestService on new http:Listener(9098) {
                 }
             };
         } else {
+            UpdatedContest toBeUpdatedContest = {
+                title: updatedContest.title,
+                startTime: updatedContest.startTime,
+                endTime: updatedContest.endTime,
+                readmeFile: updatedContest.readmeFile
+            };
             toBeUpdatedContest["contestId"] = contestId;
             return toBeUpdatedContest;
         }
     }
 
+
     resource function delete contests/[string contestId]() returns http:InternalServerError|http:NotFound|http:Ok {
         entities:Contest|persist:Error deletedContest = self.db->/contests/[contestId].delete;
-        if deletedContest is persist:InvalidKeyError {
+        if deletedContest is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if deletedContest is persist:Error {
             log:printError("Error while deleting contest", contestId = contestId, 'error = deletedContest);
@@ -599,7 +683,7 @@ service /contestService on new http:Listener(9098) {
 
             entities:contestAccess|persist:Error deletedContestAccess = self.db->/contestaccesses/[listResult[0].id].delete;
 
-            if deletedContestAccess is persist:InvalidKeyError {
+            if deletedContestAccess is persist:NotFoundError {
                 return http:NOT_FOUND;
             } else if deletedContestAccess is persist:Error {
                 log:printError("Error while deleting ", 'error = deletedContestAccess);
@@ -655,7 +739,7 @@ function getContestChallenges(entities:Client db, string contestId) returns stri
         select challengesOnContest.challengeId;
 }
 
-function getOwnerContests(entities:Client db, string userId, string status) returns data_model:Contest[]|persist:Error {
+function getOwnerContests(entities:Client db, string userId) returns data_model:Contest[]|persist:Error {
 
     stream<entities:Contest, persist:Error?> contestStream = db->/contests;
 
@@ -667,12 +751,12 @@ function getOwnerContests(entities:Client db, string userId, string status) retu
         return contests;
     } else {
         return from var contest in contests
-            where compareTime(contest.startTime, contest.endTime) == status && contest.moderatorId == userId
+            where contest.moderatorId == userId
             select toDataModelContest(contest);
     }
 }
 
-function getSharedContests(entities:Client db, string userId, string status) returns SharedContestOut[]|persist:Error {
+function getSharedContests(entities:Client db, string userId) returns SharedContestOut[]|persist:Error {
 
     stream<SharedContest, persist:Error?> sharedContestStream = db->/contestaccesses;
 
@@ -684,7 +768,7 @@ function getSharedContests(entities:Client db, string userId, string status) ret
         return sharedContests;
     } else {
         return from var sharedContest in sharedContests
-            where compareTime(sharedContest.contest.startTime, sharedContest.contest.endTime) == status && sharedContest.userId == userId
+            where sharedContest.userId == userId
             select toSharedContestOut(sharedContest);
     }
 }
@@ -723,7 +807,7 @@ function toContestAccessAdminsOut(contestAccessAdmins contestAccess) returns con
     fullName: contestAccess.user.fullname
 };
 
-function getContestsWithStatus(entities:Client db, string status) returns data_model:Contest[]|persist:Error {
+function getContests(entities:Client db) returns data_model:Contest[]|persist:Error {
 
     stream<entities:Contest, persist:Error?> contestStream = db->/contests;
 
@@ -735,34 +819,7 @@ function getContestsWithStatus(entities:Client db, string status) returns data_m
         return contests;
     } else {
         return from var contest in contests
-            where compareTime(contest.startTime, contest.endTime) == status
             select toDataModelContest(contest);
-    }
-}
-
-function compareTime(time:Civil startTime, time:Civil endTime) returns string|error {
-    startTime.utcOffset = {
-        hours: 5,
-        minutes: 30
-    };
-    endTime.utcOffset = {
-        hours: 5,
-        minutes: 30
-    };
-    time:Utc nowTimeUTC = time:utcNow();
-    time:Utc|time:Error startTimeUTC = time:utcFromCivil(startTime);
-    time:Utc|time:Error endTimeUTC = time:utcFromCivil(endTime);
-
-    if startTimeUTC is time:Error {
-        return "Start time error";
-    } else if endTimeUTC is time:Error {
-        return "End Time error";
-    } else if startTimeUTC < endTimeUTC && endTimeUTC < nowTimeUTC {
-        return "past";
-    } else if startTimeUTC > nowTimeUTC && endTimeUTC > nowTimeUTC {
-        return "future";
-    } else {
-        return "present";
     }
 }
 

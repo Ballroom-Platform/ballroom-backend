@@ -11,6 +11,9 @@ import ballerina/time;
 type UpdatedChallenge record {
     string title;
     string difficulty;
+    byte[] readmeFile;
+    byte[] templateFile;
+    byte[] testCasesFile;
 };
 
 type UserAccess record {
@@ -77,7 +80,7 @@ service /challengeService on new http:Listener(9096) {
     resource function get challenges/[string challengeId]()
             returns data_model:Challenge|http:InternalServerError|http:NotFound {
         entities:Challenge|persist:Error entityChallenge = self.db->/challenges/[challengeId];
-        if entityChallenge is persist:InvalidKeyError {
+        if entityChallenge is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if entityChallenge is persist:Error {
             log:printError("Error while retrieving challenge by id", challengeId = challengeId,
@@ -191,7 +194,7 @@ service /challengeService on new http:Listener(9096) {
             returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
         http:InternalServerError|http:NotFound {
         record {|byte[] templateFile;|}|persist:Error templateFileRecord = self.db->/challenges/[challengeId];
-        if templateFileRecord is persist:InvalidKeyError {
+        if templateFileRecord is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if templateFileRecord is persist:Error {
             log:printError("Error while retrieving challenge template by id", challengeId = challengeId,
@@ -212,7 +215,7 @@ service /challengeService on new http:Listener(9096) {
             returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
         http:InternalServerError|http:NotFound {
         record {|byte[] readmeFile;|}|persist:Error readmeFileRecord = self.db->/challenges/[challengeId];
-        if readmeFileRecord is persist:InvalidKeyError {
+        if readmeFileRecord is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if readmeFileRecord is persist:Error {
             log:printError("Error while retrieving challenge radme by id", challengeId = challengeId,
@@ -344,17 +347,40 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    // TODO: Why are we returning a string here?
-    // TODO: Shouldn't they be errors?
-    resource function put challenges/[string challengeId](UpdatedChallenge updatedChallenge) 
-            returns UpdatedChallenge|http:InternalServerError|http:NotFound|error {
-        entities:ChallengeUpdate challengeUpdate = {
-            title: updatedChallenge.title,
-            difficulty: updatedChallenge.difficulty
+    resource function put challenges/[string challengeId](http:Request request) 
+            returns UpdatedChallenge|http:InternalServerError|http:NotFound {
+        mime:Entity[]|http:ClientError bodyParts = request.getBodyParts();
+        map<mime:Entity> bodyPartMap = {};
+        if bodyParts is http:ClientError {
+            return <http:InternalServerError>{
+                body: {
+                    message: bodyParts.toString()
+                }
             };
-
+        }
+        else {
+            foreach mime:Entity entity in bodyParts {
+                bodyPartMap[entity.getContentDisposition().name] = entity;
+            }
+        }
+        entities:ChallengeUpdate challengeUpdate = {};
+        do {
+            challengeUpdate = {
+                title: check bodyPartMap.get("title").getText(),
+                difficulty: check bodyPartMap.get("difficulty").getText(),
+                readmeFile: check readEntityToByteArray("readme", bodyPartMap),
+                testCasesFile: check readEntityToByteArray("testCase", bodyPartMap),
+                templateFile: check readEntityToByteArray("template", bodyPartMap)
+            };
+        } on fail var e {
+        	return <http:InternalServerError>{
+                body: {
+                    message:e.message()
+                }
+            };
+        }
         entities:Challenge|persist:Error challenge = self.db->/challenges/[challengeId].put(challengeUpdate);
-        if challenge is persist:InvalidKeyError {
+        if challenge is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if challenge is persist:Error {
             log:printError("Error while updating challenge by id", challengeId = challengeId, 'error = challenge);
@@ -364,6 +390,12 @@ service /challengeService on new http:Listener(9096) {
                 }
             };
         } else {
+            UpdatedChallenge updatedChallenge = {
+                difficulty: challenge.difficulty, 
+                testCasesFile: challenge.testCasesFile,
+                templateFile: challenge.templateFile,
+                title: challenge.title,
+                readmeFile: challenge.readmeFile};
             updatedChallenge["challengeId"] = challengeId;
             return updatedChallenge;
         }
@@ -372,7 +404,7 @@ service /challengeService on new http:Listener(9096) {
     resource function delete challenges/[string challengeId]() 
             returns http:InternalServerError|http:NotFound|http:Ok {
         entities:Challenge|persist:Error deletedChallenge = self.db->/challenges/[challengeId].delete;
-        if deletedChallenge is persist:InvalidKeyError {
+        if deletedChallenge is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if deletedChallenge is persist:Error {
             log:printError("Error while deleting challenge by id", challengeId = challengeId, 'error = deletedChallenge);
@@ -417,7 +449,7 @@ service /challengeService on new http:Listener(9096) {
 
             entities:ChallengeAccess|persist:Error deleteChallengeAccess = self.db->/challengeaccesses/[listResult[0].id].delete;
 
-            if deleteChallengeAccess is persist:InvalidKeyError {
+            if deleteChallengeAccess is persist:NotFoundError {
                 return http:NOT_FOUND;
             } else if deleteChallengeAccess is persist:Error {
                 log:printError("Error while deleting ", 'error = deleteChallengeAccess);

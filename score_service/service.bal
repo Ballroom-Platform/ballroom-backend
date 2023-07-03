@@ -79,7 +79,7 @@ service /submissionService on new http:Listener(9092) {
         record {|
             float score;
         |}|persist:Error scoreRecord = db->/submissions/[submissionId];
-        if scoreRecord is persist:InvalidKeyError {
+        if scoreRecord is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if scoreRecord is persist:Error {
             log:printError("Error while retrieving submission score", scoreRecord);
@@ -115,7 +115,7 @@ service /submissionService on new http:Listener(9092) {
         record {|
             byte[] file;
         |}|persist:Error fileRecord = db->/submittedfiles/[submissionId];
-        if fileRecord is persist:InvalidKeyError {
+        if fileRecord is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if fileRecord is persist:Error {
             log:printError("Error while retrieving submission file", submissionId = submissionId, 'error = fileRecord);

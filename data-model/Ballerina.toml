@@ -2,7 +2,7 @@
 org = "ballroom"
 name = "data_model"
 version = "0.1.0"
-distribution = "2201.5.0"
+distribution = "2201.6.0"
 export = ["data_model.registry", "data_model"]
 
 [build-options]

@@ -5,7 +5,7 @@
 
 [ballerina]
 dependencies-toml-version = "2"
-distribution-version = "2201.5.0"
+distribution-version = "2201.6.0"
 
 [[package]]
 org = "ballerina"
@@ -57,11 +57,9 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "persist"
-version = "0.3.1"
+version = "1.0.0"
 dependencies = [
-	{org = "ballerina", name = "jballerina.java"},
-	{org = "ballerina", name = "sql"},
-	{org = "ballerina", name = "time"}
+	{org = "ballerina", name = "jballerina.java"}
 ]
 modules = [
 	{org = "ballerina", packageName = "persist", moduleName = "persist"}
@@ -70,7 +68,7 @@ modules = [
 [[package]]
 org = "ballerina"
 name = "sql"
-version = "1.8.0"
+version = "1.9.0"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -104,7 +102,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "mysql"
-version = "1.8.0"
+version = "1.9.0"
 dependencies = [
 	{org = "ballerina", name = "crypto"},
 	{org = "ballerina", name = "io"},
@@ -125,6 +123,20 @@ modules = [
 ]
 
 [[package]]
+org = "ballerinax"
+name = "persist.sql"
+version = "1.0.0"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "persist"},
+	{org = "ballerina", name = "sql"},
+	{org = "ballerina", name = "time"}
+]
+modules = [
+	{org = "ballerinax", packageName = "persist.sql", moduleName = "persist.sql"}
+]
+
+[[package]]
 org = "ballroom"
 name = "entities"
 version = "0.1.0"
@@ -134,7 +146,8 @@ dependencies = [
 	{org = "ballerina", name = "time"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "mysql"},
-	{org = "ballerinax", name = "mysql.driver"}
+	{org = "ballerinax", name = "mysql.driver"},
+	{org = "ballerinax", name = "persist.sql"}
 ]
 modules = [
 	{org = "ballroom", packageName = "entities", moduleName = "entities"}

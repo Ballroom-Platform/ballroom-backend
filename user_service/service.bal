@@ -35,7 +35,7 @@ service /userService on new http:Listener(9095) {
 
     resource function get users/[string userId]() returns Payload|http:NotFound|http:InternalServerError {
         entities:User|persist:Error userEntity = db->/users/[userId];
-        if userEntity is persist:InvalidKeyError {
+        if userEntity is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if userEntity is persist:Error {
             log:printError("Error while retrieving user", userId = userId, 'error = userEntity);
@@ -72,7 +72,7 @@ service /userService on new http:Listener(9095) {
 
     resource function get users/[string userId]/roles() returns Payload|http:NotFound|http:InternalServerError {
         entities:User|persist:Error userEntity = db->/users/[userId];
-        if userEntity is persist:InvalidKeyError {
+        if userEntity is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if userEntity is persist:Error {
             log:printError("Error while retrieving user role", userId = userId, 'error = userEntity);
@@ -117,7 +117,7 @@ service /userService on new http:Listener(9095) {
         }
 
         entities:User|persist:Error updatedUser = db->/users/[userId].put({role: role});
-        if updatedUser is persist:InvalidKeyError {
+        if updatedUser is persist:NotFoundError {
             return http:NOT_FOUND;
         } else if updatedUser is persist:Error {
             log:printError("Error while updating user role", userId = userId, role = role, 'error = updatedUser);
