@@ -9,7 +9,6 @@ type User record {|
     string fullname;
     string role;
 	Contest[] moderatedContests;
-	UsersOnContests[] registeredContests;
 	Submission[] submissions;
 	RefreshToken[] refreshtokens;
 	contestAccess[] contestaccess;
@@ -29,7 +28,6 @@ type Contest record {|
     // CHECK (starTime < endTime) constraint
     User moderator;
 	ChallengesOnContests[] challenges;
-	UsersOnContests[] registeredUsers;
 	Submission[] submissions;
 	contestAccess[] contestaccess;
 	Registrants[] registrants;
@@ -63,14 +61,6 @@ type ChallengesOnContests record {|
     Contest contest;
     time:Civil assignedTime;
     //User assignedBy; // Introduce this later
-|};
-
-type UsersOnContests record {|
-    readonly string id;
-    User user;
-    Contest contest;
-    time:Civil registeredTime;
-    //User joinedBy; // Introduce this later
 |};
 
 type Submission record {|

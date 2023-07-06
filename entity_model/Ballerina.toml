@@ -2,7 +2,7 @@
 org = "ballroom"
 name = "entities"
 version = "0.1.0"
-distribution = "2201.5.0"
+distribution = "2201.6.0"
 
 [build-options]
 observabilityIncluded = true
@@ -13,7 +13,6 @@ module = "entities"
 
 [[platform.java11.dependency]]
 groupId = "io.ballerina.stdlib"
-artifactId = "persist-native"
-version = "0.3.1"
-
+artifactId = "persist.sql-native"
+version = "1.0.0"
 
