@@ -44,9 +44,9 @@ service /sts on new http:Listener(9093) {
         do {
             // TODO Refactor this code to work with application-specific types
             json idpResult = check verifyIDPToken(Authorization);
-            if check idpResult.active == false {
-                return http:FORBIDDEN;
-            }
+            // if check idpResult.active == false {
+            //     return http:FORBIDDEN;
+            // }
 
             string userId = check idpResult.sub;
             log:printInfo("User id: ", userId = userId);
@@ -70,11 +70,11 @@ service /sts on new http:Listener(9093) {
             }
 
             io:println("Generating access token");
-            string accessToken = check generateToken(check userData, 3600);
+            string accessToken = check generateToken(userData, 3600);
             log:printInfo("Access token generated", accessToken = accessToken);
 
-            string refreshToken = check generateToken(check userData, 3600 * 24 * 30);
-            log:printInfo("Access token generated", accessToken = accessToken);
+            string refreshToken = check generateToken(userData, 3600 * 24 * 30);
+            log:printInfo("RefreshToken token generated", refreshToken = refreshToken);
 
             check storeRefreshTokenUser(refreshToken, userId);
             log:printInfo("Refresh token stored");

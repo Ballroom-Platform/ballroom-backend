@@ -9,7 +9,7 @@ import ballerina/persist;
 
 configurable string userServiceUrl = ?;
 configurable string idpUrl = ?;
-configurable string Authorization = ?;
+configurable string clientId = ?;
 
 @display {
     label: "User Service",
@@ -27,15 +27,21 @@ final entities:Client db = check new ();
 public isolated function verifyIDPToken(string header) returns json|error {
     log:printInfo("Verifying IDP Token");
     string idpToken = (regex:split(header, " "))[1];
-    json|error res = idp->post("/introspect",
-    headers = ({
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Connection": "keep-alive",
-        "Authorization": Authorization
-    })
-        , message = "token=" + idpToken,
-        targetType = json);
+    jwt:ValidatorConfig config = {
+        issuer: "https://api.asgardeo.io/t/ballroomhackathon/oauth2/token",
+        audience: clientId,
+        signatureConfig: {
+        jwksConfig: {
+            url: idpUrl + "/jwks"}
+        }
+    };
 
+    jwt:Payload|jwt:Error payload = jwt:validate(idpToken, config);
+    if payload is jwt:Error {
+        log:printError("Error while verifying IDP Token", 'error = payload);
+        return payload;
+    }
+    json|error res = payload.toJson();
     if res is error {
         log:printError("Error while verifying IDP Token", 'error = res);
     } else {

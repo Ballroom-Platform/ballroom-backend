@@ -119,6 +119,9 @@ dependencies = [
 	{org = "ballerina", name = "log"},
 	{org = "ballerina", name = "time"}
 ]
+modules = [
+	{org = "ballerina", packageName = "jwt", moduleName = "jwt"}
+]
 
 [[package]]
 org = "ballerina"
@@ -259,6 +262,18 @@ dependencies = [
 
 [[package]]
 org = "ballerina"
+name = "regex"
+version = "1.4.3"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "lang.string"}
+]
+modules = [
+	{org = "ballerina", packageName = "regex", moduleName = "regex"}
+]
+
+[[package]]
+org = "ballerina"
 name = "task"
 version = "2.3.2"
 dependencies = [
@@ -314,7 +329,9 @@ version = "0.1.0"
 dependencies = [
 	{org = "ballerina", name = "http"},
 	{org = "ballerina", name = "io"},
+	{org = "ballerina", name = "jwt"},
 	{org = "ballerina", name = "log"},
+	{org = "ballerina", name = "regex"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerinai", name = "observe"}
 ]
