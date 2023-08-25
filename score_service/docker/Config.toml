@@ -1,0 +1,13 @@
+rabbitmqHost = "rabbitmq"
+rabbitmqPort = 5672
+
+[ballroom.data_model.registry.serviceIds]
+"ballroom/UserService" = "http://user:9095/userService"
+
+[ballroom.entities]
+host = "mysql"
+port = 3306
+user = "ballroom_sql"
+password = "ballroomadmin123"
+database = "ballroomdb"
+connectionOptions = {ssl = {allowPublicKeyRetrieval = true}}

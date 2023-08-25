@@ -1,0 +1,124 @@
+version: '2.14.0'
+
+services:
+  mysql:
+    image: 'mysql:8-oracle'
+    environment:
+      - MYSQL_ROOT_PASSWORD=ballroomadmin123
+      - MYSQL_DATABASE=ballroomdb
+      - MYSQL_USER=ballroom_sql
+      - MYSQL_PASSWORD=ballroomadmin123
+    healthcheck:
+        test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+        timeout: 20s
+        retries: 10
+    volumes:
+      - "./entity_model/persist/script.sql:/docker-entrypoint-initdb.d/1.sql"
+  rabbitmq:
+    image: rabbitmq
+  user:
+    image: ballroom/user-service:0.1.0
+    volumes:
+      - type: bind
+        source: ./user_service/docker/Config.toml
+        target: /home/ballerina/Config.toml
+    depends_on: 
+      mysql: 
+          condition: service_healthy
+    links:
+      - mysql
+  upload:
+    image: ballroom/upload-service:0.1.0
+    volumes:
+      - type: bind
+        source: ./upload-service/docker/Config.toml
+        target: /home/ballerina/Config.toml
+    depends_on: 
+      mysql: 
+          condition: service_healthy
+      rabbitmq: 
+          condition: service_started
+    links:
+      - mysql
+      - rabbitmq
+  score:
+    image: ballroom/score-service:0.1.0
+    volumes:
+      - type: bind
+        source: ./score_service/docker/Config.toml
+        target: /home/ballerina/Config.toml
+    depends_on: 
+      mysql: 
+          condition: service_healthy
+      rabbitmq: 
+          condition: service_started
+      user: 
+          condition: service_started
+    links:
+      - mysql
+      - rabbitmq
+      - user
+  executor:
+    image: ballroom/executor-service:0.1.0
+    volumes:
+      - type: bind
+        source: ./executor-service/docker/Config.toml
+        target: /home/ballerina/Config.toml
+    depends_on: 
+      mysql: 
+          condition: service_healthy
+      rabbitmq: 
+          condition: service_started
+    links:
+      - mysql
+      - rabbitmq
+  contest:
+    image: ballroom/contest-service:0.1.0
+    volumes:
+      - type: bind
+        source: ./contest-service/docker/Config.toml
+        target: /home/ballerina/Config.toml
+    depends_on: 
+      mysql: 
+          condition: service_healthy
+    links:
+      - mysql
+  challenge:
+    image: ballroom/challenge-service:0.1.0
+    volumes:
+      - type: bind
+        source: ./challenge-service/docker/Config.toml
+        target: /home/ballerina/Config.toml
+    depends_on: 
+      mysql: 
+          condition: service_healthy
+    links:
+      - mysql
+  bff:
+    image: ballroom/bff-service:0.1.0
+    volumes:
+      - type: bind
+        source: ./bff/docker/Config.toml
+        target: /home/ballerina/Config.toml
+    ports:
+      - 9099:9099
+    depends_on: 
+      mysql: 
+          condition: service_healthy
+      user: 
+          condition: service_started
+      challenge: 
+          condition: service_started
+      contest: 
+          condition: service_started
+      upload: 
+          condition: service_started
+      score: 
+          condition: service_started
+    links:
+      - mysql
+      - user
+      - challenge
+      - contest
+      - upload
+      - score
