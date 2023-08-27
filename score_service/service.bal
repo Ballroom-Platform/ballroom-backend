@@ -8,6 +8,8 @@ import ballerina/persist;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
+// configurable string rabbitmqUser = ?;
+// configurable string rabbitmqPassword = ?;
 
 public type Submission record {
     readonly string submission_id;
@@ -24,8 +26,18 @@ public type LeaderboardRow record {
     float score;
 };
 
+// rabbitmq:ConnectionConfiguration config = {
+//     username: rabbitmqUser,
+//     password: rabbitmqPassword
+// };
+
+// rabbitmq:QosSettings qosSettings = {
+//     prefetchCount: 0
+// };
+
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
+// listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort,qosSettings,config);
 
 @rabbitmq:ServiceConfig {
     queueName: data_model:EXEC_TO_SCORE_QUEUE_NAME

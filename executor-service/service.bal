@@ -14,9 +14,21 @@ type challengeDifficulty record {|
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
+// configurable string rabbitmqUser = ?;
+// configurable string rabbitmqPassword = ?;
+
+// rabbitmq:ConnectionConfiguration config = {
+//     username: rabbitmqUser,
+//     password: rabbitmqPassword
+// };
+
+// rabbitmq:QosSettings qosSettings = {
+//     prefetchCount: 0
+// };
 
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
+// listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort, qosSettings, config);
 entities:Client db = check new ();
 
 // @display {

@@ -11,8 +11,14 @@ import ballroom/entities;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
+// configurable string rabbitmqUser = ?;
+// configurable string rabbitmqPassword = ?;
 
 final entities:Client db = check new ();
+// rabbitmq:ConnectionConfiguration config = {
+//         username: rabbitmqUser,
+//         password: rabbitmqPassword
+//     };
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -36,6 +42,7 @@ service /uploadService on new http:Listener(9094) {
     function init() returns error? {
         // Initiate the RabbitMQ client at the start of the service. This will be used
         // throughout the lifetime of the service.
+        // self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort, config);
         self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort);
         log:printInfo("Upload service started...");
     }

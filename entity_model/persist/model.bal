@@ -3,14 +3,10 @@ import ballerina/persist as _;
 
 type User record {|
     readonly string id;
-    // TODO unique
     string username;
-    // @constraint:String
     string fullname;
-    string role;
 	Contest[] moderatedContests;
 	Submission[] submissions;
-	RefreshToken[] refreshtokens;
 	contestAccess[] contestaccess;
 	ChallengeAccess[] challengeaccess;
 	Challenge[] challenge;
@@ -21,11 +17,9 @@ type Contest record {|
     readonly string id;
     string title;
     byte[] readmeFile;
-    // MySQL type => TIMESTAMP
     time:Civil startTime;
     time:Civil endTime;
     string imageUrl;
-    // CHECK (starTime < endTime) constraint
     User moderator;
 	ChallengesOnContests[] challenges;
 	Submission[] submissions;
@@ -33,19 +27,12 @@ type Contest record {|
 	Registrants[] registrants;
 |};
 
-// enum Difficulty {
-//     EASY,
-//     MEDIUM,
-//     HARD
-// };
-
 type Challenge record {|
     readonly string id;
     string title;
     time:Civil createdTime;
     byte[] templateFile;
     byte[] readmeFile;
-    // difficulty ENUM('EASY', 'MEDIUM', 'HARD') NOT NULL,
     string difficulty;
     byte[] testCasesFile;
 	ChallengesOnContests[] contests;
@@ -60,7 +47,6 @@ type ChallengesOnContests record {|
     Challenge challenge;
     Contest contest;
     time:Civil assignedTime;
-    //User assignedBy; // Introduce this later
 |};
 
 type Submission record {|
@@ -79,13 +65,6 @@ type SubmittedFile record {|
     string fileExtension;
     byte[] file;
     Submission? submission;
-|};
-
-type RefreshToken record {|
-    readonly string id;
-    // VARCHAR(1000)
-    string token;
-    User user;
 |};
 
 // Many-to-many relations between user and Contest
