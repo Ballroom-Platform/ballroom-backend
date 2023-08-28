@@ -1,0 +1,4 @@
+# rabbitmqHost = "localhost"
+# rabbitmqPort = 5672
+# rabbitmqUser = ""
+# rabbitmqPassword = ""

@@ -189,7 +189,6 @@ service /challengeService on new http:Listener(9096) {
         }
     }
 
-    // OpenAPI Tool Bug:https://github.com/ballerina-platform/openapi-tools/issues/1314  returns byte[]|error
     resource function get challenges/[string challengeId]/template()
             returns @http:Payload {mediaType: "application/octet-stream"} http:Response|
         http:InternalServerError|http:NotFound {
@@ -251,7 +250,7 @@ service /challengeService on new http:Listener(9096) {
     resource function post challenges(http:Request request)
             returns string|http:BadRequest|http:InternalServerError|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
-        // Check if the request has 6 body parts
+
         if bodyParts.length() != 6 {
             return <http:BadRequest>{
                 body: {
@@ -260,13 +259,11 @@ service /challengeService on new http:Listener(9096) {
             };
         }
 
-        // Creates a map with the body part name as the key and the body part as the value
         map<mime:Entity> bodyPartMap = {};
         foreach mime:Entity entity in bodyParts {
             bodyPartMap[entity.getContentDisposition().name] = entity;
         }
 
-        // Check if all the required body parts are present
         if !bodyPartMap.hasKey("title") || !bodyPartMap.hasKey("difficulty") ||
             !bodyPartMap.hasKey("testCase") || !bodyPartMap.hasKey("template") || !bodyPartMap.hasKey("readme") || !bodyPartMap.hasKey("authorId") {
             return <http:BadRequest>{

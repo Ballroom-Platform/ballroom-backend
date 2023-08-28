@@ -11,8 +11,14 @@ import ballroom/entities;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
+// configurable string rabbitmqUser = ?;
+// configurable string rabbitmqPassword = ?;
 
 final entities:Client db = check new ();
+// rabbitmq:ConnectionConfiguration config = {
+//         username: rabbitmqUser,
+//         password: rabbitmqPassword
+//     };
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -36,13 +42,11 @@ service /uploadService on new http:Listener(9094) {
     function init() returns error? {
         // Initiate the RabbitMQ client at the start of the service. This will be used
         // throughout the lifetime of the service.
+        // self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort, config);
         self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort);
         log:printInfo("Upload service started...");
     }
 
-    # A resource for uploading solutions to challenges
-    # + request - the input solution file as a multipart request with userId, challengeId & the solution as a zip file
-    # + return - response message from server
     resource function post solution(http:Request request, http:Caller caller) returns error? {
         http:Response response = new;
         mime:Entity[]|error bodyParts = request.getBodyParts();
@@ -53,7 +57,6 @@ service /uploadService on new http:Listener(9094) {
             return;
         }
 
-        // check if the request contains 4 body parts
         if bodyParts.length() != 4 {
             response.statusCode = 400;
             response.setTextPayload(string `Expects 4 bodyparts but found ${bodyParts.length()}`);
@@ -61,13 +64,11 @@ service /uploadService on new http:Listener(9094) {
             return;
         }
 
-        // Creates a map with the body part name as the key and the body part as the value
         map<mime:Entity> bodyPartMap = {};
         foreach mime:Entity entity in bodyParts {
             bodyPartMap[entity.getContentDisposition().name] = entity;
         }
 
-        // check if the request contains all the required body parts
         if !bodyPartMap.hasKey("userId") || !bodyPartMap.hasKey("challengeId") || !bodyPartMap.hasKey("contestId") || !bodyPartMap.hasKey("submission") {
             response.statusCode = 400;
             response.setTextPayload(string `Expects bodyparts with names userId, challengeId, contestId & submission`);
@@ -76,7 +77,6 @@ service /uploadService on new http:Listener(9094) {
         }
 
         do {
-            // Respond with a generated submission id
             string generatedSubmissionId = uuid:createType1AsString();
             response.setPayload(generatedSubmissionId);
             check caller->respond(response);
@@ -107,7 +107,6 @@ service /uploadService on new http:Listener(9094) {
 }
 
 function addSubmission(data_model:SubmissionMessage submissionMessage, byte[] submissionFile) returns persist:Error? {
-    // TODO These two queries should be in a transaction
     string submissionFileId = uuid:createType4AsString();
     _ = check db->/submittedfiles.post([
         {

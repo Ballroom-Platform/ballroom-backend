@@ -1,3 +1,9 @@
+orgName = ""	
+clientId = ""	
+clientSecret = ""	
+adminGroupId = ""	
+contestantGroupId = ""	
+
 [ballroom.entities]
 host = "localhost"
 port = 3306
