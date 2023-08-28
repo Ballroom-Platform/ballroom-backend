@@ -1,7 +1,7 @@
 rabbitmqHost = "localhost"
 rabbitmqPort = 5672
-# rabbitmqUser = "root"
-# rabbitmqPassword = "hwMQroot123"
+# rabbitmqUser = ""
+# rabbitmqPassword = ""
 
 [ballroom.data_model.registry.serviceIds]
 "ballroom/UserService" = "http://localhost:9095/userService"

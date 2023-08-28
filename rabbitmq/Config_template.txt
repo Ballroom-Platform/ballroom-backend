@@ -1,4 +1,4 @@
-rabbitmqHost = "localhost"
-rabbitmqPort = 5672
-rabbitmqUser = "root"
-rabbitmqPassword = "hwMQroot123"
+# rabbitmqHost = "localhost"
+# rabbitmqPort = 5672
+# rabbitmqUser = ""
+# rabbitmqPassword = ""

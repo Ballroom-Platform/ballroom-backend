@@ -1,7 +1,7 @@
 rabbitmqHost = "localhost"
 rabbitmqPort = 5672
-# rabbitmqUser = "root"
-# rabbitmqPassword = "hwMQroot123"
+# rabbitmqUser = ""
+# rabbitmqPassword = ""
 
 [ballroom.entities]
 host = "localhost"
