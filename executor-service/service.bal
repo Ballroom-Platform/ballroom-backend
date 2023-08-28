@@ -26,15 +26,10 @@ configurable int rabbitmqPort = ?;
 //     prefetchCount: 0
 // };
 
-// The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
 // listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort, qosSettings, config);
 entities:Client db = check new ();
 
-// @display {
-//     label: "Executor Service",
-//     id: "ExecutorService"
-// }
 @rabbitmq:ServiceConfig {
     queueName: data_model:QUEUE_NAME
 }
@@ -43,15 +38,12 @@ service rabbitmq:Service on channelListener {
     private final rabbitmq:Client rabbitmqClient;
 
     function init() returns error? {
-        // Initiate the RabbitMQ client at the start of the service. This will be used
-        // throughout the lifetime of the service.
         log:printInfo("Executor service starting...");
         self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort);
         log:printInfo("Executor service started...");
     }
 
     remote function onMessage(data_model:SubmissionMessage submissionEvent) returns error? {
-        // need to evaluate the score
         data_model:ScoredSubmissionMessage|error scoredSubMsg = handleEvent(submissionEvent);
         if (scoredSubMsg is error) {
             log:printError("Error occurred while handling the event", 'error = scoredSubMsg);
@@ -69,20 +61,16 @@ function handleEvent(data_model:SubmissionMessage submissionEvent) returns error
     string basePath = check file:createTempDir(prefix = "ballroom_executor_");
     string fileNameWithExtension = submissionEvent.fileName + submissionEvent.fileExtension;
 
-    // get the file
     string storedLocation = check getAndStoreFile(basePath, submissionEvent.fileName, 
         submissionEvent.fileExtension, submissionEvent.submissionId);
 
-    // unzip the submissionZip
     string[] unzipArguments = ["unzip " + basePath + "/" + fileNameWithExtension + " -d " + 
         basePath + "/" + submissionEvent.fileName + "/"];
     _ = check executeCommand(unzipArguments);
 
-    // replace the test cases
     string testDirPath = check file:joinPath(basePath, submissionEvent.fileName, "tests");
     check file:remove(testDirPath, file:RECURSIVE);
 
-    // get the test case file and store in the same location
     () _ = check getAndStoreTestCase(submissionEvent.challengeId, storedLocation);
 
     string[] testUnzipArguments = ["unzip " + basePath + "/" + submissionEvent.fileName + "/testsZip" + 
@@ -109,7 +97,6 @@ function calculateScore(string[] executeCommandResult, string challengeId) retur
         balCommandOutput += "\n" + line;
     }
 
-    // calculate scores
     int passingTests = 0;
     int totalTests = 0;
     string[] reversedConsoleContent = executeCommandResult.reverse();
@@ -152,7 +139,6 @@ function calculateScore(string[] executeCommandResult, string challengeId) retur
 }
 
 function getTestDirPath(string challengeId) returns string {
-    // hardcoding a value for now (ideally should be generated using the challenge id)
     return "./challengetests/tests/";
 }
 
@@ -183,11 +169,6 @@ function getAndStoreTestCase(string challengeId, string location) returns error?
     check io:fileWriteBytes(location + "/testsZip", fileFromDB);
 }
 
-# Description
-#
-# + arguments - String array which contains arguments to execute
-# + workdingDir - Working directory
-# + return - Returns an error if exists
 function executeCommand(string[] arguments, string? workdingDir = ()) returns string[]|error {
     string[] newArgs = [];
     newArgs.push("/bin/bash", "-c");

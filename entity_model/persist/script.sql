@@ -1,9 +1,3 @@
-
--- AUTO-GENERATED FILE.
-
--- This file is an auto-generated file by Ballerina persistence layer for model.
--- Please verify the generated scripts and execute them against the target DB server.
-
 DROP TABLE IF EXISTS `ChallengesOnContests`;
 DROP TABLE IF EXISTS `ChallengeAccess`;
 DROP TABLE IF EXISTS `Submission`;

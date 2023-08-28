@@ -116,9 +116,6 @@ type Registrant record {
     time:Civil registeredTime;
 };
 
-# A service representing a network-accessible API
-# bound to port `9098`.
-# // TODO Remove this CORS config when the BFF is configured properly
 @display {
     label: "Contest Service",
     id: "ContestService"
@@ -336,7 +333,7 @@ service /contestService on new http:Listener(9098) {
 
     resource function post contests(http:Request request) returns string|http:BadRequest|http:InternalServerError|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
-        // Check if the request has 5 body parts
+
         if bodyParts.length() != 5 {
             return <http:BadRequest>{
                 body: {
@@ -345,12 +342,12 @@ service /contestService on new http:Listener(9098) {
                 }
             };
         }
-        // Creates a map with the body part name as the key and the body part as the value
+
         map<mime:Entity> bodyPartMap = {};
         foreach mime:Entity entity in bodyParts {
             bodyPartMap[entity.getContentDisposition().name] = entity;
         }
-        // Check if all the required body parts are present
+
         if !bodyPartMap.hasKey("title") || !bodyPartMap.hasKey("readme") ||
             !bodyPartMap.hasKey("startTime") || !bodyPartMap.hasKey("endTime") || !bodyPartMap.hasKey("moderator") {
             return <http:BadRequest>{
@@ -385,7 +382,7 @@ service /contestService on new http:Listener(9098) {
 
     resource function post contests/[string contestId]/challenges/[string challengeId]()
             returns string|http:BadRequest|http:InternalServerError {
-        // Check for duplications. 
+
         stream<entities:ChallengesOnContests, persist:Error?> challengesOnContets = self.db->/challengesoncontests;
         entities:ChallengesOnContests[]|persist:Error duplicates = from var challengesOnContest in challengesOnContets
             where challengesOnContest.contestId == contestId && challengesOnContest.challengeId == challengeId
@@ -732,7 +729,7 @@ resource function put contests/[string contestId](http:Request request)
 }
 
 function getContestChallenges(entities:Client db, string contestId) returns string[]|persist:Error {
-    // Optimization possible
+
     stream<entities:ChallengesOnContests, persist:Error?> challengesOnContets = db->/challengesoncontests;
     return from var challengesOnContest in challengesOnContets
         where challengesOnContest.contestId == contestId
@@ -853,30 +850,18 @@ function readEntityToByteArray(string entityName, map<mime:Entity> entityMap) re
 }
 
 function readEntityToTime(string entityName, map<mime:Entity> entityMap) returns time:Civil|error {
-    //get the time from the entity 
     string timeString = check entityMap.get(entityName).getText();
-
-    //get year 
     string yearString = timeString.substring(0, 4);
     int year = check int:fromString(yearString);
-
-    //get month
     string monthString = timeString.substring(5, 7);
     int month = check int:fromString(monthString);
-
-    //get day
     string dayString = timeString.substring(8, 10);
     int day = check int:fromString(dayString);
-
-    //get hour
     string hourString = timeString.substring(11, 13);
     int hour = check int:fromString(hourString);
-
-    //get minute
     string minuteString = timeString.substring(14, 16);
     int minute = check int:fromString(minuteString);
 
-    //make the time object
     time:Civil time = {
         year: year,
         month: month,

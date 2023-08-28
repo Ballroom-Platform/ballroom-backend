@@ -36,9 +36,6 @@ public type Role record {
 
 final entities:Client db = check new ();
 
-# A service representing a network-accessible API
-# bound to port `9090`.
-#
 @display {
     label: "User Service",
     id: "UserService"
@@ -213,7 +210,6 @@ service /userService on new http:Listener(9095) {
 
     resource function post users(http:Request request) returns string|http:BadRequest|http:InternalServerError|http:Conflict|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
-        // Check if the request has 3 body parts
         if bodyParts.length() != 3 {
             return <http:BadRequest>{
                 body: {
@@ -222,12 +218,10 @@ service /userService on new http:Listener(9095) {
                 }
             };
         }
-        // Creates a map with the body part name as the key and the body part as the value
         map<mime:Entity> bodyPartMap = {};
         foreach mime:Entity entity in bodyParts {
             bodyPartMap[entity.getContentDisposition().name] = entity;
         }
-        // Check if all the required body parts are present
         if !bodyPartMap.hasKey("userId") || !bodyPartMap.hasKey("username") ||
             !bodyPartMap.hasKey("fullname") {
             return <http:BadRequest>{

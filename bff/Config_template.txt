@@ -3,6 +3,3 @@ contestServiceUrl = "http://localhost:9098"
 uploadServiceUrl = "http://localhost:9094"
 userServiceUrl = "http://localhost:9095"
 submissionServiceUrl = "http://localhost:9092"
-
-# clientId = ""
-# idpUrl = "https://api.asgardeo.io/t/ballroomhackathon/oauth2"

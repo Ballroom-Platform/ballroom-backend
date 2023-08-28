@@ -41,7 +41,6 @@ type Challenge record {|
     User author;
 |};
 
-// Many-to-many relations between Challenge and Contest
 type ChallengesOnContests record {|
     readonly string id;
     Challenge challenge;
@@ -67,7 +66,6 @@ type SubmittedFile record {|
     Submission? submission;
 |};
 
-// Many-to-many relations between user and Contest
 type contestAccess record {|
     readonly string id;
     Contest contest;
@@ -75,7 +73,6 @@ type contestAccess record {|
     string accessType;
 |};
 
-// Many-to-many relations between user and Challenge
 type ChallengeAccess record {|
     readonly string id;
     Challenge challenge;

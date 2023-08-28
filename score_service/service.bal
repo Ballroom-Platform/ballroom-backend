@@ -35,7 +35,6 @@ public type LeaderboardRow record {
 //     prefetchCount: 0
 // };
 
-// The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
 // listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort,qosSettings,config);
 
@@ -45,8 +44,6 @@ listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
 service rabbitmq:Service on channelListener {
 
     function init() returns error? {
-        // Initiate the RabbitMQ client at the start of the service. This will be used
-        // throughout the lifetime of the service.
     }
 
     remote function onMessage(data_model:ScoredSubmissionMessage scoredSubmissionEvent) returns error? {
@@ -60,9 +57,6 @@ service rabbitmq:Service on channelListener {
     }
 }
 
-# A service representing a network-accessible API
-# bound to port `9090`.
-# // The service-level CORS config applies globally to each `resource`.
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["https://localhost:3000"],
@@ -82,10 +76,6 @@ service /submissionService on new http:Listener(9092) {
         log:printInfo("Score service started...");
     }
 
-    # A resource for generating greetings
-    #
-    # + submissionId - Parameter Description
-    # + return - string name with hello message or error
     resource function get submissions/[string submissionId]/score() 
             returns Payload|http:NotFound|http:InternalServerError {
         record {|
@@ -138,11 +128,6 @@ service /submissionService on new http:Listener(9092) {
     }
 
     resource function get leaderboard/[string contestId]() returns http:InternalServerError|Payload {
-        // Since bal persit does not support complicated database joins and aggregations. 
-        // The following code performs an in-memory join and aggregation.
-
-        // Retrieve all submissions
-        // Filter out submissions that doesnt match with the contest 
         stream<SubmissionWithUserData, persist:Error?> submissionStream = db->/submissions;
         SubmissionWithUserData[]|persist:Error submissions = from var submission in submissionStream
             where submission.contestId == contestId
@@ -152,10 +137,7 @@ service /submissionService on new http:Listener(9092) {
             return http:INTERNAL_SERVER_ERROR;
         }
 
-        // Group submissions by user
-        // user ids are keys of the map
         table<SubmissionsByUser> key(userId) submissionsByUserTable = table [];
-        // map<SubmissionWithUserData[]> submissionsByUser = {};
         foreach var submission in submissions {
             string userId = submission.userId;
             if (submissionsByUserTable[userId] is ()) {
@@ -169,11 +151,8 @@ service /submissionService on new http:Listener(9092) {
             submissionsByUserTable.get(userId).submissions.push(submission);
         }
 
-        // Group user submissions by challenge
-        // challenge ids are keys of the map
         LeaderboardRow[] leaderBoard = [];
         foreach var SubmissionsByUser in submissionsByUserTable {
-            // Group submissions by challenge for each user
             map<SubmissionWithUserData[]> submissionsByUserAndChallenge = {};
             foreach var submission in SubmissionsByUser.submissions {
                 string challengeId = submission.challengeId;
@@ -183,7 +162,6 @@ service /submissionService on new http:Listener(9092) {
                 submissionsByUserAndChallenge.get(challengeId).push(submission);
             } 
 
-            // Find the submission with the max score for each challenge
             map<SubmissionWithUserData> submissionWithMaxScoreByChallenge = {};  
             foreach var challengeId in submissionsByUserAndChallenge.keys() {
                 SubmissionWithUserData[] submissionsByChallenge = submissionsByUserAndChallenge.get(challengeId);
@@ -196,7 +174,6 @@ service /submissionService on new http:Listener(9092) {
                 submissionWithMaxScoreByChallenge[challengeId] = submissionWithMaxScore;
             }
 
-            // Calculate user score
             float score = 0;
             foreach var submission in submissionWithMaxScoreByChallenge {
                 score = score + submission.score;
@@ -209,12 +186,10 @@ service /submissionService on new http:Listener(9092) {
             leaderBoard.push(leaderboardRow);
         }
 
-        // Sort leaderboard by score
         leaderBoard = from var leaderboardRow in leaderBoard
         order by leaderboardRow.score descending
         select leaderboardRow;
 
-        // TODO Leaderboard
         Payload responsePayload = {
             message: "Leaderboard created",
             data: leaderBoard
@@ -223,11 +198,7 @@ service /submissionService on new http:Listener(9092) {
     }
 
     resource function get scoreboard/[string contestId]/[string userId]() returns http:InternalServerError|Payload {
-        // Since bal persit does not support complicated database joins and aggregations. 
-        // The following code performs an in-memory join and aggregation.
 
-        // Retrieve all submissions
-        // Filter out submissions that doesnt match with the contest 
         stream<ScoreBoard, persist:Error?> submissionStream = db->/submissions;
         ScoreBoard[]|persist:Error submissions = from var submission in submissionStream
             where submission.contestId == contestId && submission.userId == userId
@@ -237,8 +208,6 @@ service /submissionService on new http:Listener(9092) {
             return http:INTERNAL_SERVER_ERROR;
         }
 
-        // Group submissions by challenge
-        // challenge ids are keys of the map
         map<ScoreBoard[]> submissionsByChallenge = {};
         foreach var submission in submissions {
             string challengeId = submission.challenge.id;
@@ -248,7 +217,6 @@ service /submissionService on new http:Listener(9092) {
             submissionsByChallenge.get(challengeId).push(submission);
         }
 
-        // Find the submission with the max score for each challenge
         map<ScoreBoard> submissionWithMaxScoreByChallenge = {};
         foreach var challengeId in submissionsByChallenge.keys() {
             ScoreBoard[] submissionsByChallengeId = submissionsByChallenge.get(challengeId);
@@ -261,7 +229,6 @@ service /submissionService on new http:Listener(9092) {
             submissionWithMaxScoreByChallenge[challengeId] = submissionWithMaxScore;
         }
 
-        // add to scoreboardout 
         ScoreBoardOut[] scoreboard = [];
         foreach var submission in submissionWithMaxScoreByChallenge {
             ScoreBoardOut scoreBoardOut = {
