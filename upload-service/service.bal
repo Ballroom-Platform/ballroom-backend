@@ -20,6 +20,9 @@ final entities:Client db = check new ();
 //         password: rabbitmqPassword
 //     };
 
+# A service representing a network-accessible API
+# bound to port `9090`.
+# // The service-level CORS config applies globally to each `resource`.
 @display {
     label: "Upload Service",
     id: "UploadService"
@@ -37,6 +40,8 @@ service /uploadService on new http:Listener(9094) {
     private final rabbitmq:Client rabbitmqClient;
 
     function init() returns error? {
+        // Initiate the RabbitMQ client at the start of the service. This will be used
+        // throughout the lifetime of the service.
         // self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort, config);
         self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort);
         log:printInfo("Upload service started...");

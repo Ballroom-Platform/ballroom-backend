@@ -60,22 +60,27 @@ service / on new http:Listener(9099) {
         log:printInfo("BFF service started...");
     }
 
+    // Challenge service
     resource function 'default challengeService/[string... paths](http:Request req) returns http:Response|error {
         return check self.challengeService->forward(req.rawPath, req);
     }
 
+    // Contest service
     resource function 'default contestService/[string... paths](http:Request req) returns http:Response|error {
         return check self.contestService->forward(req.rawPath, req);
     }
 
+   // Upload service
     resource function 'default uploadService/[string... paths](http:Request req) returns http:Response|error {
         return check self.uploadService->forward(req.rawPath, req);
     }
 
+  // User service
     resource function 'default userService/[string... paths](http:Request req) returns http:Response|error {
         return check self.userService->forward(req.rawPath, req);
     }
 
+    // Submission service
     resource function 'default submissionService/[string... paths](http:Request req) returns http:Response|error {
         return check self.submissionService->forward(req.rawPath, req);
     }

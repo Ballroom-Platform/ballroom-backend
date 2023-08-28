@@ -26,6 +26,7 @@ configurable int rabbitmqPort = ?;
 //     prefetchCount: 0
 // };
 
+// The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
 // listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort, qosSettings, config);
 entities:Client db = check new ();
@@ -38,6 +39,8 @@ service rabbitmq:Service on channelListener {
     private final rabbitmq:Client rabbitmqClient;
 
     function init() returns error? {
+        // Initiate the RabbitMQ client at the start of the service. This will be used
+        // throughout the lifetime of the service.
         log:printInfo("Executor service starting...");
         self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort);
         log:printInfo("Executor service started...");

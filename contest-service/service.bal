@@ -116,6 +116,8 @@ type Registrant record {
     time:Civil registeredTime;
 };
 
+# A service representing a network-accessible API
+# bound to port `9098`.
 @display {
     label: "Contest Service",
     id: "ContestService"

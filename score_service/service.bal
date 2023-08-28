@@ -35,6 +35,7 @@ public type LeaderboardRow record {
 //     prefetchCount: 0
 // };
 
+// The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
 // listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort,qosSettings,config);
 
@@ -44,6 +45,8 @@ listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
 service rabbitmq:Service on channelListener {
 
     function init() returns error? {
+        // Initiate the RabbitMQ client at the start of the service. This will be used
+        // throughout the lifetime of the service.
     }
 
     remote function onMessage(data_model:ScoredSubmissionMessage scoredSubmissionEvent) returns error? {
@@ -57,6 +60,10 @@ service rabbitmq:Service on channelListener {
     }
 }
 
+
+# A service representing a network-accessible API
+# bound to port `9090`.
+# // The service-level CORS config applies globally to each `resource`.
 @http:ServiceConfig {
     cors: {
         allowOrigins: ["https://localhost:3000"],

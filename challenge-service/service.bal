@@ -54,6 +54,8 @@ type ChallengeAccessAdminsOut record {|
     string fullName;
 |};
 
+# A service representing a network-accessible API
+# bound to port `9096`.
 @display {
     label: "Challenge Service",
     id: "ChallengeService"

@@ -36,6 +36,8 @@ public type Role record {
 
 final entities:Client db = check new ();
 
+# A service representing a network-accessible API
+# bound to port `9090`.
 @display {
     label: "User Service",
     id: "UserService"
