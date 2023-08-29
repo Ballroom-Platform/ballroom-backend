@@ -1,0 +1,5 @@
+challengeServiceUrl = "http://challenge:9096"
+contestServiceUrl = "http://contest:9098"
+uploadServiceUrl = "http://upload:9094"
+userServiceUrl = "http://user:9095"
+submissionServiceUrl = "http://score:9092"

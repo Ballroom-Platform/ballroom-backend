@@ -1,5 +1,4 @@
 [container.image]
-name = "score-service"
+name = "contest-service"
 repository = "ballroom"
 tag = "0.1.0"
-

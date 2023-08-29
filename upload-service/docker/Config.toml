@@ -1,0 +1,10 @@
+rabbitmqHost = "rabbitmq"
+rabbitmqPort = 5672
+
+[ballroom.entities]
+host = "mysql"
+port = 3306
+user = "ballroom_sql"
+password = "ballroomadmin123"
+database = "ballroomdb"
+connectionOptions = {ssl = {allowPublicKeyRetrieval = true}}
