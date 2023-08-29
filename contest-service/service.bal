@@ -1,3 +1,19 @@
+// Copyright (c) 2023 WSO2 LLC. (http://www.wso2.org) All Rights Reserved.
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 import ballerina/http;
 import ballerina/time;
 import ballerina/uuid;
@@ -77,7 +93,7 @@ type Payload record {
 
 type MyInternalServerError record {|
     *http:InternalServerError;
-    record{|string message;|} body;
+    record {|string message;|} body;
 |};
 
 type SubmissionData record {|
@@ -157,7 +173,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-    resource function get contests() 
+    resource function get contests()
             returns data_model:Contest[]|http:InternalServerError|http:NotFound {
         data_model:Contest[]|persist:Error contests = getContests(self.db);
         if contests is persist:Error {
@@ -252,7 +268,7 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-        resource function get contests/owned/[string userId]() returns data_model:Contest[]|http:InternalServerError|http:NotFound {
+    resource function get contests/owned/[string userId]() returns data_model:Contest[]|http:InternalServerError|http:NotFound {
 
         data_model:Contest[]|persist:Error contests = getOwnerContests(self.db, userId);
         if contests is persist:Error {
@@ -527,16 +543,17 @@ service /contestService on new http:Listener(9098) {
         }
     }
 
-resource function put contests/[string contestId](http:Request request)
+    resource function put contests/[string contestId](http:Request request)
             returns UpdatedContest|http:InternalServerError|http:NotFound {
 
         data_model:Contest contestData = {
-            contestId: "", 
-            moderator: "", 
-            startTime: {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0}, 
-            readme: [], 
-            endTime: {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0}, 
-            title: ""};
+            contestId: "",
+            moderator: "",
+            startTime: {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0},
+            readme: [],
+            endTime: {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0},
+            title: ""
+        };
 
         string title = "";
         time:Civil startTime = {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0};
@@ -548,7 +565,7 @@ resource function put contests/[string contestId](http:Request request)
             return http:NOT_FOUND;
         } else if entityContest is persist:Error {
             log:printError("Error while retrieving contest by id", contestId = contestId, 'error = entityContest);
-            return <MyInternalServerError> {
+            return <MyInternalServerError>{
                 body: {
                     message: string `Error while retrieving contest by ${contestId}`
                 }
@@ -598,16 +615,16 @@ resource function put contests/[string contestId](http:Request request)
             } else {
                 readme = contestData.readme;
             }
-	        contestUpdate = {
+            contestUpdate = {
                 title: title,
                 startTime: startTime,
                 endTime: endTime,
                 readmeFile: readme
-	            };
+            };
         } on fail var e {
-        	return <http:InternalServerError>{
+            return <http:InternalServerError>{
                 body: {
-                    message:e.message()
+                    message: e.message()
                 }
             };
         }
@@ -633,7 +650,6 @@ resource function put contests/[string contestId](http:Request request)
             return toBeUpdatedContest;
         }
     }
-
 
     resource function delete contests/[string contestId]() returns http:InternalServerError|http:NotFound|http:Ok {
         entities:Contest|persist:Error deletedContest = self.db->/contests/[contestId].delete;

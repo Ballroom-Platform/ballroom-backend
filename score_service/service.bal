@@ -1,3 +1,19 @@
+// Copyright (c) 2023 WSO2 LLC. (http://www.wso2.org) All Rights Reserved.
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 import ballerinax/rabbitmq;
 import ballroom/data_model;
 import ballerina/http;
@@ -8,6 +24,7 @@ import ballerina/persist;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
+
 // configurable string rabbitmqUser = ?;
 // configurable string rabbitmqPassword = ?;
 
@@ -37,6 +54,7 @@ public type LeaderboardRow record {
 
 // The consumer service listens to the "RequestQueue" queue.
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
+
 // listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort,qosSettings,config);
 
 @rabbitmq:ServiceConfig {
@@ -60,7 +78,6 @@ service rabbitmq:Service on channelListener {
     }
 }
 
-
 # A service representing a network-accessible API
 # bound to port `9090`.
 # // The service-level CORS config applies globally to each `resource`.
@@ -83,7 +100,7 @@ service /submissionService on new http:Listener(9092) {
         log:printInfo("Score service started...");
     }
 
-    resource function get submissions/[string submissionId]/score() 
+    resource function get submissions/[string submissionId]/score()
             returns Payload|http:NotFound|http:InternalServerError {
         record {|
             float score;
@@ -103,7 +120,7 @@ service /submissionService on new http:Listener(9092) {
         }
     }
 
-    resource function get submissions(string userId, string contestId, string challengeId) 
+    resource function get submissions(string userId, string contestId, string challengeId)
             returns http:InternalServerError|Payload {
         Submission[]|persist:Error submissionList = getSubmissionList(userId, contestId, challengeId) ?: [];
         if submissionList is persist:Error {
@@ -119,7 +136,7 @@ service /submissionService on new http:Listener(9092) {
         }
     }
 
-    resource function get submissions/[string submissionId]/solution() 
+    resource function get submissions/[string submissionId]/solution()
             returns byte[]|http:NotFound|http:InternalServerError {
         record {|
             byte[] file;
@@ -167,9 +184,9 @@ service /submissionService on new http:Listener(9092) {
                     submissionsByUserAndChallenge[challengeId] = [];
                 }
                 submissionsByUserAndChallenge.get(challengeId).push(submission);
-            } 
+            }
 
-            map<SubmissionWithUserData> submissionWithMaxScoreByChallenge = {};  
+            map<SubmissionWithUserData> submissionWithMaxScoreByChallenge = {};
             foreach var challengeId in submissionsByUserAndChallenge.keys() {
                 SubmissionWithUserData[] submissionsByChallenge = submissionsByUserAndChallenge.get(challengeId);
                 SubmissionWithUserData submissionWithMaxScore = submissionsByChallenge[0];
@@ -194,8 +211,8 @@ service /submissionService on new http:Listener(9092) {
         }
 
         leaderBoard = from var leaderboardRow in leaderBoard
-        order by leaderboardRow.score descending
-        select leaderboardRow;
+            order by leaderboardRow.score descending
+            select leaderboardRow;
 
         Payload responsePayload = {
             message: "Leaderboard created",
@@ -245,7 +262,7 @@ service /submissionService on new http:Listener(9092) {
             };
             scoreboard.push(scoreBoardOut);
         }
-        
+
         Payload responsePayload = {
             message: "Scoreboard created",
             data: scoreboard
@@ -288,6 +305,4 @@ type ScoreBoardOut record {|
     time:Civil submittedTime;
     string title;
 |};
-
-
 
