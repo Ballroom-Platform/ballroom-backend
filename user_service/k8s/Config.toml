@@ -1,0 +1,13 @@
+orgName = <<ORG_NAME>> 
+clientId = <<CLIENT_ID>> 
+clientSecret = <<CLIENT_SECRET>>
+adminGroupId = <<ADMIN_GROUP_ID>>
+contestantGroupId = <<CONTESTANT_GROUP_ID>>
+
+[ballroom.entities]
+host = "mysql-service"
+port = 3306
+user = "root"
+password = "password"
+database = "ballroomdb"
+connectionOptions = {ssl = {allowPublicKeyRetrieval = true}}

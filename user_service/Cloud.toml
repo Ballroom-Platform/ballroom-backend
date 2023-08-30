@@ -2,3 +2,18 @@
 name = "user-service"
 repository = "ballroom"
 tag = "0.1.0"
+
+[cloud.deployment]
+internal_domain_name="user-service"
+min_memory="256Mi"
+max_memory="512Mi"
+min_cpu="250m"
+max_cpu="1000m"
+
+[cloud.deployment.autoscaling]
+min_replicas=1
+max_replicas=1
+
+[[cloud.config.files]]
+file="./k8s/Config.toml"
+name="user-config" 
