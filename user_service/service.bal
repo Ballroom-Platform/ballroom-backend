@@ -70,7 +70,7 @@ final entities:Client db = check new ();
 service /userService on new http:Listener(9095) {
     private final entities:Client db;
     private final scim:Client scimClient;
-
+    
     function init() returns error? {
         self.db = check new ();
         self.scimClient = check new (config);
@@ -368,5 +368,4 @@ service /userService on new http:Listener(9095) {
         }
     }
 }
- 
  
