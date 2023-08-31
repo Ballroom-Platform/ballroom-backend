@@ -1,0 +1,7 @@
+[ballroom.entities]
+host = "mysql-service"
+port = 3306
+user = "root"
+password = "password"
+database = "ballroomdb"
+connectionOptions = {ssl = {allowPublicKeyRetrieval = true}}

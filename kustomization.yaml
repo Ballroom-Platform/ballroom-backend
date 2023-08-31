@@ -1,0 +1,17 @@
+resources:
+  - user_service/target/kubernetes/user_service/user_service.yaml
+  - upload-service/target/kubernetes/upload_service/upload_service.yaml
+  - score_service/target/kubernetes/score_service/score_service.yaml
+  - executor-service/target/kubernetes/executor_service/executor_service.yaml
+  - contest-service/target/kubernetes/contest_service/contest_service.yaml
+  - challenge-service/target/kubernetes/challenge_service/challenge_service.yaml
+  - bff/target/kubernetes/bff/bff.yaml
+  - mysql.yaml
+  - rabbitmq.yaml
+
+configMapGenerator:
+  - name: mysql-initdb-config
+    files:
+      - ./entity_model/persist/script.sql
+generatorOptions:
+  disableNameSuffixHash: true
