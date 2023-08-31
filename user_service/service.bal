@@ -70,7 +70,7 @@ final entities:Client db = check new ();
 service /userService on new http:Listener(9095) {
     private final entities:Client db;
     private final scim:Client scimClient;
-    
+
     function init() returns error? {
         self.db = check new ();
         self.scimClient = check new (config);
@@ -136,12 +136,12 @@ service /userService on new http:Listener(9095) {
                 json groups = item.toJson();
                 Role|error roles = groups.cloneWithType();
                 if roles is error {
-                    log:printError("Error while retrieving users 2", userId = userId, 'error = roles);
+                    log:printError("Error while retrieving users", userId = userId, 'error = roles);
                     return http:INTERNAL_SERVER_ERROR;
                 } else {
                     json|error roleJson = roles.groups[0].display;
                     if roleJson is error {
-                        log:printError("Error while retrieving users 3", userId = userId, 'error = roleJson);
+                        log:printError("Error while retrieving users", userId = userId, 'error = roleJson);
                         return http:INTERNAL_SERVER_ERROR;
                     } else {
                         string userrole = roleJson.toString().substring(8);
@@ -368,4 +368,3 @@ service /userService on new http:Listener(9095) {
         }
     }
 }
- 
