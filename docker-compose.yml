@@ -14,6 +14,7 @@ services:
         retries: 10
     volumes:
       - "./entity_model/persist/script.sql:/docker-entrypoint-initdb.d/1.sql"
+      - "./TestData/init-data.sql:/docker-entrypoint-initdb.d/init-data.sql" 
   rabbitmq:
     image: rabbitmq
   user:
