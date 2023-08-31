@@ -69,164 +69,148 @@ final entities:Client db = check new ();
 }
 service /userService on new http:Listener(9095) {
     private final entities:Client db;
+    private final scim:Client scimClient;
 
     function init() returns error? {
         self.db = check new ();
+        self.scimClient = check new (config);
         log:printInfo("User service started...");
     }
 
-    resource function get users/[string userId]() returns Payload|http:NotFound|http:InternalServerError {
-        scim:Client|error scimClient = new (config);
-        if scimClient is error {
-            log:printError("Error while creating scim client", 'error = scimClient);
+    resource isolated function get users/[string userId]() returns Payload|http:NotFound|http:InternalServerError {
+        scim:UserResource|scim:ErrorResponse|error userData = self.scimClient->getUser(userId);
+        if userData is scim:UserResource {
+            string username = userData.userName ?: "";
+            username = username.substring(8);
+            scim:Name name = userData.name ?: {};
+            string givenName = name.givenName ?: "";
+            string familyName = name.familyName ?: "";
+            string fullname = givenName + " " + familyName;
+            json groups = userData.toJson();
+            Role|error roles = groups.cloneWithType();
+            if roles is error {
+                log:printError("Error while retrieving user", userId = userId, 'error = roles);
+                return http:INTERNAL_SERVER_ERROR;
+            } else {
+                json|error roleJson = roles.groups[0].display;
+                if roleJson is error {
+                    log:printError("Error while retrieving user", userId = userId, 'error = roleJson);
+                    return http:INTERNAL_SERVER_ERROR;
+                } else {
+                    string role = roleJson.toString().substring(8);
+                    data_model:User user = {
+                        user_id: userId,
+                        username: username,
+                        fullname: fullname,
+                        role: role
+                    };
+                    Payload responsePayload = {
+                        message: "User found",
+                        data: user
+                    };
+                    return responsePayload;
+                }
+            }
+        } else if userData is scim:ErrorResponse {
+            log:printError("Error while retrieving user", userId = userId, 'error = userData);
             return http:INTERNAL_SERVER_ERROR;
         } else {
-            scim:UserResource|scim:ErrorResponse|error userData = scimClient->getUser(userId);
-            if userData is scim:UserResource {
-                string username = userData.userName ?: "";
+            log:printError("Error while retrieving user", userId = userId, 'error = userData);
+            return http:INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    resource isolated function get users(string? role) returns data_model:User[]|http:NotFound|http:InternalServerError {
+        scim:UserResponse|scim:ErrorResponse|error usersData = self.scimClient->getUsers();
+        if usersData is scim:UserResponse {
+            scim:UserResource[] resources = usersData.Resources ?: [];
+            data_model:User[] users = [];
+            foreach scim:UserResource item in resources {
+                string userId = item.id ?: "";
+                string username = item.userName ?: "";
                 username = username.substring(8);
-                scim:Name name = userData.name ?: {};
+                scim:Name name = item.name ?: {};
                 string givenName = name.givenName ?: "";
                 string familyName = name.familyName ?: "";
                 string fullname = givenName + " " + familyName;
-                json groups = userData.toJson();
+                json groups = item.toJson();
                 Role|error roles = groups.cloneWithType();
                 if roles is error {
-                    log:printError("Error while retrieving user", userId = userId, 'error = roles);
+                    log:printError("Error while retrieving users", userId = userId, 'error = roles);
                     return http:INTERNAL_SERVER_ERROR;
                 } else {
                     json|error roleJson = roles.groups[0].display;
                     if roleJson is error {
-                        log:printError("Error while retrieving user", userId = userId, 'error = roleJson);
+                        log:printError("Error while retrieving users", userId = userId, 'error = roleJson);
                         return http:INTERNAL_SERVER_ERROR;
                     } else {
-                        string role = roleJson.toString().substring(8);
-                        data_model:User user = {
-                            user_id: userId,
-                            username: username,
-                            fullname: fullname,
-                            role: role
-                        };
-                        Payload responsePayload = {
-                            message: "User found",
-                            data: user
-                        };
-                        return responsePayload;
-                    }
-                }
-            } else if userData is scim:ErrorResponse {
-                log:printError("Error while retrieving user", userId = userId, 'error = userData);
-                return http:INTERNAL_SERVER_ERROR;
-            } else {
-                log:printError("Error while retrieving user", userId = userId, 'error = userData);
-                return http:INTERNAL_SERVER_ERROR;
-            }
-        }
-    }
-
-    resource function get users(string? role) returns data_model:User[]|http:NotFound|http:InternalServerError {
-        scim:Client|error scimClient = new (config);
-        if scimClient is error {
-            log:printError("Error while creating scim client", 'error = scimClient);
-            return http:INTERNAL_SERVER_ERROR;
-        } else {
-            scim:UserResponse|scim:ErrorResponse|error usersData = scimClient->getUsers();
-            if usersData is scim:UserResponse {
-                scim:UserResource[] resources = usersData.Resources ?: [];
-                data_model:User[] users = [];
-                foreach scim:UserResource item in resources {
-                    string userId = item.id ?: "";
-                    string username = item.userName ?: "";
-                    username = username.substring(8);
-                    scim:Name name = item.name ?: {};
-                    string givenName = name.givenName ?: "";
-                    string familyName = name.familyName ?: "";
-                    string fullname = givenName + " " + familyName;
-                    json groups = item.toJson();
-                    Role|error roles = groups.cloneWithType();
-                    if roles is error {
-                        log:printError("Error while retrieving users 2", userId = userId, 'error = roles);
-                        return http:INTERNAL_SERVER_ERROR;
-                    } else {
-                        json|error roleJson = roles.groups[0].display;
-                        if roleJson is error {
-                            log:printError("Error while retrieving users 3", userId = userId, 'error = roleJson);
-                            return http:INTERNAL_SERVER_ERROR;
-                        } else {
-                            string userrole = roleJson.toString().substring(8);
-                            if role != null {
-                                if role == userrole {
-                                    data_model:User user = {
-                                        user_id: userId,
-                                        username: username,
-                                        fullname: fullname,
-                                        role: role
-                                    };
-                                    users.push(user);
-                                }
-                            } else {
+                        string userrole = roleJson.toString().substring(8);
+                        if role != null {
+                            if role == userrole {
                                 data_model:User user = {
                                     user_id: userId,
                                     username: username,
                                     fullname: fullname,
-                                    role: userrole
+                                    role: role
                                 };
                                 users.push(user);
                             }
+                        } else {
+                            data_model:User user = {
+                                user_id: userId,
+                                username: username,
+                                fullname: fullname,
+                                role: userrole
+                            };
+                            users.push(user);
                         }
                     }
                 }
-                return users;
-            } else if usersData is scim:ErrorResponse {
-                log:printError("Error while retrieving users", 'error = usersData);
-                return http:INTERNAL_SERVER_ERROR;
-            } else {
-                log:printError("Error while retrieving users", 'error = usersData);
-                return http:INTERNAL_SERVER_ERROR;
             }
-        }
-    }
-
-    resource function get users/[string userId]/roles() returns Payload|http:NotFound|http:InternalServerError {
-        scim:Client|error clientuser = new (config);
-        if clientuser is error {
-            log:printError("Error while creating scim client", 'error = clientuser);
+            return users;
+        } else if usersData is scim:ErrorResponse {
+            log:printError("Error while retrieving users", 'error = usersData);
             return http:INTERNAL_SERVER_ERROR;
         } else {
-            scim:UserResource|scim:ErrorResponse|error userData = clientuser->getUser(userId);
-            if userData is scim:UserResource {
-                json groups = userData.toJson();
-                Role|error roles = groups.cloneWithType();
-                if roles is error {
-                    log:printError("Error while retrieving user", userId = userId, 'error = roles);
-                    return http:INTERNAL_SERVER_ERROR;
-                } else {
-                    json|error roleJson = roles.groups[0].display;
-                    if roleJson is error {
-                        log:printError("Error while retrieving user", userId = userId, 'error = roleJson);
-                        return http:INTERNAL_SERVER_ERROR;
-                    } else {
-                        string role = roleJson.toString().substring(8);
-                        Payload responsePayload = {
-                            message: "Role found",
-                            data: {
-                                "role": role
-                            }
-                        };
-                        return responsePayload;
-                    }
-                }
-            } else if userData is scim:ErrorResponse {
-                log:printError("Error while retrieving user", userId = userId, 'error = userData);
-                return http:INTERNAL_SERVER_ERROR;
-            } else {
-                log:printError("Error while retrieving user", userId = userId, 'error = userData);
-                return http:INTERNAL_SERVER_ERROR;
-            }
+            log:printError("Error while retrieving users", 'error = usersData);
+            return http:INTERNAL_SERVER_ERROR;
         }
     }
 
-    resource function post users(http:Request request) returns string|http:BadRequest|http:InternalServerError|http:Conflict|error {
+    resource isolated function get users/[string userId]/roles() returns Payload|http:NotFound|http:InternalServerError {
+        scim:UserResource|scim:ErrorResponse|error userData = self.scimClient->getUser(userId);
+        if userData is scim:UserResource {
+            json groups = userData.toJson();
+            Role|error roles = groups.cloneWithType();
+            if roles is error {
+                log:printError("Error while retrieving user", userId = userId, 'error = roles);
+                return http:INTERNAL_SERVER_ERROR;
+            } else {
+                json|error roleJson = roles.groups[0].display;
+                if roleJson is error {
+                    log:printError("Error while retrieving user", userId = userId, 'error = roleJson);
+                    return http:INTERNAL_SERVER_ERROR;
+                } else {
+                    string role = roleJson.toString().substring(8);
+                    Payload responsePayload = {
+                        message: "Role found",
+                        data: {
+                            "role": role
+                        }
+                    };
+                    return responsePayload;
+                }
+            }
+        } else if userData is scim:ErrorResponse {
+            log:printError("Error while retrieving user", userId = userId, 'error = userData);
+            return http:INTERNAL_SERVER_ERROR;
+        } else {
+            log:printError("Error while retrieving user", userId = userId, 'error = userData);
+            return http:INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    resource isolated function post users(http:Request request) returns string|http:BadRequest|http:InternalServerError|http:Conflict|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
         if bodyParts.length() != 3 {
             return <http:BadRequest>{
@@ -288,7 +272,7 @@ service /userService on new http:Listener(9095) {
         }
     }
 
-    resource function patch users/[string userId]/changerole(http:Request request) returns http:NoContent|http:BadRequest|http:NotFound|http:InternalServerError {
+    resource isolated function patch users/[string userId]/changerole(http:Request request) returns http:NoContent|http:BadRequest|http:NotFound|http:InternalServerError {
         string role = "";
         string userName = "";
         mime:Entity[]|http:ClientError bodyParts = request.getBodyParts();
@@ -320,71 +304,65 @@ service /userService on new http:Listener(9095) {
                 body: string `Invalid role '${role}'`
             };
         }
-        scim:Client|error clientuser = new (config);
-        if clientuser is error {
-            log:printError("Error while creating scim client", 'error = clientuser);
-            return http:INTERNAL_SERVER_ERROR;
-        } else {
-            scim:GroupPatch updateData = {
-                schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
-                Operations: [
-                    {
-                        op: "add",
-                        value: {
-                            members: [
-                                {
-                                    display: userName,
-                                    value: userId
-                                }
-                            ]
-                        }
-                    }
-                ]
-            };
-            scim:GroupPatch removeData = {
-                schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
-                Operations: [
-                    {
-                        op: "remove",
-                        path: "members[value eq \"" + userId + "\"]",
-                        value: {
-                            members: [
-                                {
-                                    display: userName,
-                                    value: userId
-                                }
-                            ]
-                        }
-                    }
-                ]
-            };
-            if role == "admin" {
-                scim:GroupResponse|scim:ErrorResponse|error updateGroup = clientuser->patchGroup(adminGroupId, updateData);
-                if updateGroup is error {
-                    log:printError(updateGroup.toBalString());
-                    return http:INTERNAL_SERVER_ERROR;
-                } else {
-                    scim:GroupResponse|scim:ErrorResponse|error removeFromGroup = clientuser->patchGroup(contestantGroupId, removeData);
-                    if removeFromGroup is error {
-                        log:printError(removeFromGroup.toBalString());
-                        return http:INTERNAL_SERVER_ERROR;
-                    } else {
-                        return http:NO_CONTENT;
+        scim:GroupPatch updateData = {
+            schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+            Operations: [
+                {
+                    op: "add",
+                    value: {
+                        members: [
+                            {
+                                display: userName,
+                                value: userId
+                            }
+                        ]
                     }
                 }
-            } else if role == "contestant" {
-                scim:GroupResponse|scim:ErrorResponse|error updateGroup = clientuser->patchGroup(contestantGroupId, updateData);
-                if updateGroup is error {
-                    log:printError(updateGroup.toBalString());
+            ]
+        };
+        scim:GroupPatch removeData = {
+            schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+            Operations: [
+                {
+                    op: "remove",
+                    path: "members[value eq \"" + userId + "\"]",
+                    value: {
+                        members: [
+                            {
+                                display: userName,
+                                value: userId
+                            }
+                        ]
+                    }
+                }
+            ]
+        };
+        if role == "admin" {
+            scim:GroupResponse|scim:ErrorResponse|error updateGroup = self.scimClient->patchGroup(adminGroupId, updateData);
+            if updateGroup is error {
+                log:printError(updateGroup.toBalString());
+                return http:INTERNAL_SERVER_ERROR;
+            } else {
+                scim:GroupResponse|scim:ErrorResponse|error removeFromGroup = self.scimClient->patchGroup(contestantGroupId, removeData);
+                if removeFromGroup is error {
+                    log:printError(removeFromGroup.toBalString());
                     return http:INTERNAL_SERVER_ERROR;
                 } else {
-                    scim:GroupResponse|scim:ErrorResponse|error removeFromGroup = clientuser->patchGroup(adminGroupId, removeData);
-                    if removeFromGroup is error {
-                        log:printError(removeFromGroup.toBalString());
-                        return http:INTERNAL_SERVER_ERROR;
-                    } else {
-                        return http:NO_CONTENT;
-                    }
+                    return http:NO_CONTENT;
+                }
+            }
+        } else if role == "contestant" {
+            scim:GroupResponse|scim:ErrorResponse|error updateGroup = self.scimClient->patchGroup(contestantGroupId, updateData);
+            if updateGroup is error {
+                log:printError(updateGroup.toBalString());
+                return http:INTERNAL_SERVER_ERROR;
+            } else {
+                scim:GroupResponse|scim:ErrorResponse|error removeFromGroup = self.scimClient->patchGroup(adminGroupId, removeData);
+                if removeFromGroup is error {
+                    log:printError(removeFromGroup.toBalString());
+                    return http:INTERNAL_SERVER_ERROR;
+                } else {
+                    return http:NO_CONTENT;
                 }
             }
         }
