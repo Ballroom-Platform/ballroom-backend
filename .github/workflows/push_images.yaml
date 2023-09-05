@@ -1,0 +1,59 @@
+name: Push Images to Docker Registry
+
+on:
+    workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [challenge-service, contest-service, executor-service, score_service, upload-service, user_service]
+    env:
+      TEST_NAME: "${{ matrix.test }}"
+    steps:
+    - uses: actions/checkout@v2
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Write Test Name to outputs
+      id: testname
+      run: |
+        echo "::set-output name=test-name::${TEST_NAME}"
+    - uses: ballerina-platform/setup-ballerina@v1
+      name: Install Ballerina
+      with:
+        version: 2201.6.0
+    - name: Pack data model
+      working-directory: "data-model"
+      run: bal pack
+    - name: Push data model to local
+      working-directory: "data-model"
+      run: bal push --repository=local
+    - name: Pack entity model
+      working-directory: "entity_model"
+      run: bal persist generate && bal pack
+    - name: Push entity model to local
+      working-directory: "entity_model"
+      run: bal push --repository=local
+    - name: Ballerina Build
+      working-directory: ${{ steps.testname.outputs.test-name }}
+      run: bal build --cloud=docker
+    - name: Docker Push
+      working-directory: ${{ steps.testname.outputs.test-name }}
+      run: |
+        cloud_toml_contents=$(cat Cloud.toml)
+
+        # Extract the values of repository, name, and tag using grep and awk
+        repository=$(echo "$cloud_toml_contents" | grep 'repository' | awk -F ' = ' '{print $2}' | tr -d '"' | tr -d ' ')
+        name=$(echo "$cloud_toml_contents" | grep 'name' | awk -F ' = ' '{print $2}' | tr -d '"' | tr -d ' ')
+        tag=$(echo "$cloud_toml_contents" | grep 'tag' | awk -F ' = ' '{print $2}' | tr -d '"' | tr -d ' ')
+
+        # Construct the docker push command
+        docker_push_command="docker push ${repository}/${name}:${tag}"
+
+        # Print the generated docker push command
+        eval $docker_push_command 

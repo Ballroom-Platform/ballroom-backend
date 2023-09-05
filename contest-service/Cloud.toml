@@ -1,7 +1,7 @@
 [container.image]
 name = "contest-service"
 repository = "ballroom"
-tag = "0.1.0"
+tag = "latest"
 
 [cloud.deployment]
 internal_domain_name="contest-service"
