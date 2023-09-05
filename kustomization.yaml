@@ -8,6 +8,7 @@ resources:
   - bff/target/kubernetes/bff/bff.yaml
   - mysql.yaml
   - rabbitmq.yaml
+  - ingress.yaml
 
 configMapGenerator:
   - name: mysql-initdb-config
