@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - demo.localdev.me
+    secretName: quickstart-example-tls
+  rules:
+  - host: demo.localdev.me
+    http:
+      paths:
+      - backend:
+          service:
+            name: challenge-service
+            port:
+              number: 9096
+        path: /challengeService/(.*)
+        pathType: ImplementationSpecific
+      - backend:
+          service:
+            name: contest-service
+            port:
+              number: 9098
+        path: /contestService/(.*)
+        pathType: ImplementationSpecific
+      - backend:
+          service:
+            name: score-service
+            port:
+              number: 9092
+        path: /submissionService/(.*)
+        pathType: ImplementationSpecific
+      - backend:
+          service:
+            name: upload-service
+            port:
+              number: 9094
+        path: /uploadService/(.*)
+        pathType: ImplementationSpecific
+      - backend:
+          service:
+            name: user-service
+            port:
+              number: 9095
+        path: /userService/(.*)
+        pathType: ImplementationSpecific
+status:
+  loadBalancer: {}
