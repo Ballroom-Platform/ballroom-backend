@@ -1,0 +1,42 @@
+name: Build Packages
+
+on:
+  workflow_dispatch:
+  pull_request:
+  schedule:
+    - cron:  '0 */12 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [challenge-service, contest-service, executor-service, score_service, upload-service, user_service]
+    env:
+      TEST_NAME: "${{ matrix.test }}"
+    steps:
+    - uses: actions/checkout@v2
+    - name: Write Test Name to outputs
+      id: testname
+      run: |
+        echo "::set-output name=test-name::${TEST_NAME}"
+    - uses: ballerina-platform/setup-ballerina@v1
+      name: Install Ballerina
+      with:
+        version: 2201.6.0
+    - name: Pack data model
+      working-directory: "data-model"
+      run: bal pack
+    - name: Push data model to local
+      working-directory: "data-model"
+      run: bal push --repository=local
+    - name: Pack entity model
+      working-directory: "entity_model"
+      run: bal persist generate && bal pack
+    - name: Push entity model to local
+      working-directory: "entity_model"
+      run: bal push --repository=local
+    - name: Ballerina Build
+      working-directory: ${{ steps.testname.outputs.test-name }}
+      run: bal build --cloud=docker
