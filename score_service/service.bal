@@ -38,8 +38,8 @@ public type Submission record {
 };
 
 public type LeaderboardRow record {
-    string userId;
-    string? name;
+    string username;
+    string fullname;
     float score;
 };
 
@@ -167,6 +167,7 @@ service /submissionService on new http:Listener(9092) {
             if (submissionsByUserTable[userId] is ()) {
                 SubmissionsByUser submissionsByUserRecord = {
                     userId: userId,
+                    username: submission.user.username,
                     fullname: submission.user.fullname,
                     submissions: []
                 };
@@ -203,8 +204,8 @@ service /submissionService on new http:Listener(9092) {
                 score = score + submission.score;
             }
             LeaderboardRow leaderboardRow = {
-                userId: SubmissionsByUser.userId,
-                name: SubmissionsByUser.fullname,
+                username: SubmissionsByUser.username,
+                fullname: SubmissionsByUser.fullname,
                 score: score
             };
             leaderBoard.push(leaderboardRow);
@@ -279,11 +280,13 @@ type SubmissionWithUserData record {|
     string contestId;
     record {|
         string fullname;
+        string username;
     |} user;
 |};
 
 type SubmissionsByUser record {|
     readonly string userId;
+    string username;
     string fullname;
     SubmissionWithUserData[] submissions;
 |};
