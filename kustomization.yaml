@@ -5,7 +5,7 @@ resources:
   - executor-service/target/kubernetes/executor_service/executor_service.yaml
   - contest-service/target/kubernetes/contest_service/contest_service.yaml
   - challenge-service/target/kubernetes/challenge_service/challenge_service.yaml
-  - bff/target/kubernetes/bff/bff.yaml
+  # - bff/target/kubernetes/bff/bff.yaml
   - mysql.yaml
   - rabbitmq.yaml
   - ingress.yaml

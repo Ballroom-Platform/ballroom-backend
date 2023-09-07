@@ -21,8 +21,8 @@ After cloning the repository, switch to "m2" branch and follow the steps provide
 
 ### Kubernetes
 
-1.) Run `kubectl apply -k . `in the repository root directory. 
+1.) Run `kubectl apply -k .`in the repository root directory. 
 
-2.) Run `kubectl port-forward services/bff-service 9099:9099` to expose the bff-service to the host machine.
+2.) Run `kubectl port-forward --namespace=ingress-nginx service/ingress-nginx-controller 8080:80` to expose the ingress to the host machine.
 
 3.) Once all services are up and running, launch the frontend application by running `npm start` in the frontend repo.
