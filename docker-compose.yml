@@ -18,7 +18,7 @@ services:
   rabbitmq:
     image: rabbitmq
   user:
-    image: ballroom/user-service:0.1.0
+    image: ballroom/user-service:latest
     volumes:
       - type: bind
         source: ./user_service/docker/Config.toml
@@ -29,7 +29,7 @@ services:
     links:
       - mysql
   upload:
-    image: ballroom/upload-service:0.1.0
+    image: ballroom/upload-service:latest
     volumes:
       - type: bind
         source: ./upload-service/docker/Config.toml
@@ -43,7 +43,7 @@ services:
       - mysql
       - rabbitmq
   score:
-    image: ballroom/score-service:0.1.0
+    image: ballroom/score-service:latest
     volumes:
       - type: bind
         source: ./score_service/docker/Config.toml
@@ -60,7 +60,7 @@ services:
       - rabbitmq
       - user
   executor:
-    image: ballroom/executor-service:0.1.0
+    image: ballroom/executor-service:latest
     volumes:
       - type: bind
         source: ./executor-service/docker/Config.toml
@@ -74,7 +74,7 @@ services:
       - mysql
       - rabbitmq
   contest:
-    image: ballroom/contest-service:0.1.0
+    image: ballroom/contest-service:latest
     volumes:
       - type: bind
         source: ./contest-service/docker/Config.toml
@@ -85,7 +85,7 @@ services:
     links:
       - mysql
   challenge:
-    image: ballroom/challenge-service:0.1.0
+    image: ballroom/challenge-service:latest
     volumes:
       - type: bind
         source: ./challenge-service/docker/Config.toml
@@ -96,7 +96,7 @@ services:
     links:
       - mysql
   bff:
-    image: ballroom/bff-service:0.1.0
+    image: ballroom/bff-service:latest
     volumes:
       - type: bind
         source: ./bff/docker/Config.toml
@@ -116,6 +116,8 @@ services:
           condition: service_started
       score: 
           condition: service_started
+      executor:
+          condition: service_started
     links:
       - mysql
       - user
@@ -123,3 +125,4 @@ services:
       - contest
       - upload
       - score
+      - executor

@@ -30,21 +30,21 @@ type challengeDifficulty record {|
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
-// configurable string rabbitmqUser = ?;
-// configurable string rabbitmqPassword = ?;
+configurable string rabbitmqUser = ?;
+configurable string rabbitmqPassword = ?;
 
-// rabbitmq:ConnectionConfiguration config = {
-//     username: rabbitmqUser,
-//     password: rabbitmqPassword
-// };
+rabbitmq:ConnectionConfiguration config = {
+    username: rabbitmqUser,
+    password: rabbitmqPassword
+};
 
-// rabbitmq:QosSettings qosSettings = {
-//     prefetchCount: 0
-// };
+rabbitmq:QosSettings qosSettings = {
+    prefetchCount: 0
+};
 
 // The consumer service listens to the "RequestQueue" queue.
-listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
-// listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort, qosSettings, config);
+// listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
+listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort, qosSettings, config);
 entities:Client db = check new ();
 
 @rabbitmq:ServiceConfig {
@@ -58,7 +58,7 @@ service rabbitmq:Service on channelListener {
         // Initiate the RabbitMQ client at the start of the service. This will be used
         // throughout the lifetime of the service.
         log:printInfo("Executor service starting...");
-        self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort);
+        self.rabbitmqClient = check new (rabbitmqHost, rabbitmqPort, config);
         log:printInfo("Executor service started...");
     }
 

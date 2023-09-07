@@ -17,3 +17,6 @@ max_replicas=1
 [[cloud.config.files]]
 file="./k8s/Config.toml"
 name="user-config" 
+
+[settings]
+thinJar=false

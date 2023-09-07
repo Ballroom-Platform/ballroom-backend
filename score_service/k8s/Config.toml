@@ -1,5 +1,7 @@
 rabbitmqHost = "rabbitmq-service"
 rabbitmqPort = 5672
+rabbitmqUser = "guest"
+rabbitmqPassword = "guest"
 
 [ballroom.data_model.registry.serviceIds]
 "ballroom/UserService" = "http://user-service:9095/userService"

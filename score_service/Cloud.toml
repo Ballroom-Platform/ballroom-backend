@@ -14,7 +14,9 @@ max_cpu="1000m"
 min_replicas=1
 max_replicas=1
 
-
 [[cloud.config.files]]
 file="./k8s/Config.toml"
 name="score-config" 
+
+[settings]
+thinJar=false
