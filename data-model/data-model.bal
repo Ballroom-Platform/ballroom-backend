@@ -145,6 +145,7 @@ public type Contest record {
     @sql:Column {name: "contest_id"}
     string contestId;
     string title;
+    byte[] imageUrl;
     byte[] readme;
     @sql:Column {name: "start_time"}
     time:Civil startTime;

@@ -9,14 +9,6 @@ distribution-version = "2201.6.0"
 
 [[package]]
 org = "ballerina"
-name = "cloud"
-version = "2.7.0"
-modules = [
-	{org = "ballerina", packageName = "cloud", moduleName = "cloud"}
-]
-
-[[package]]
-org = "ballerina"
 name = "io"
 version = "1.4.1"
 dependencies = [
@@ -92,7 +84,6 @@ org = "ballroom"
 name = "data_model"
 version = "0.1.0"
 dependencies = [
-	{org = "ballerina", name = "cloud"},
 	{org = "ballerina", name = "sql"},
 	{org = "ballerina", name = "time"},
 	{org = "ballerinai", name = "observe"}
