@@ -35,7 +35,7 @@ type Contest record {|
     byte[] readmeFile;
     time:Civil startTime;
     time:Civil endTime;
-    string imageUrl;
+    byte[] imageUrl;
     User moderator;
 	ChallengesOnContests[] challenges;
 	Submission[] submissions;

@@ -42,7 +42,7 @@ CREATE TABLE `Contest` (
 	`readmeFile` LONGBLOB NOT NULL,
 	`startTime` DATETIME NOT NULL,
 	`endTime` DATETIME NOT NULL,
-	`imageUrl` VARCHAR(191) NOT NULL,
+	`imageUrl` LONGBLOB NOT NULL,
 	`moderatorId` VARCHAR(191) NOT NULL,
 	CONSTRAINT FK_CONTEST_USER FOREIGN KEY(`moderatorId`) REFERENCES `User`(`id`),
 	PRIMARY KEY(`id`)

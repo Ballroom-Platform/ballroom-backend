@@ -30,19 +30,12 @@ type UpdatedContest record {
     time:Civil startTime?;
     time:Civil endTime?;
     byte[] readmeFile?;
+    byte[] imageUrl?;
 };
 
 type UserAccess record {
     string userId;
     string accessType?;
-};
-
-type NewContest record {
-    string title;
-    byte[] readmeFile;
-    time:Civil startTime;
-    time:Civil endTime;
-    string moderator;
 };
 
 type SharedContest record {|
@@ -54,7 +47,7 @@ type SharedContest record {|
         byte[] readmeFile;
         time:Civil startTime;
         time:Civil endTime;
-        string imageUrl;
+        byte[] imageUrl;
         string moderatorId;
     |} contest;
 |};
@@ -63,6 +56,7 @@ type SharedContestOut record {
     string contestId;
     string title;
     byte[] readmeFile;
+    byte[] imageUrl;
     time:Civil startTime;
     time:Civil endTime;
     string accessType;
@@ -352,10 +346,10 @@ service /contestService on new http:Listener(9098) {
     resource function post contests(http:Request request) returns string|http:BadRequest|http:InternalServerError|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
 
-        if bodyParts.length() != 5 {
+        if bodyParts.length() != 6 {
             return <http:BadRequest>{
                 body: {
-                    message: string `Expects 4 bodyparts but found ${bodyParts.length()}`
+                    message: string `Expects 6 bodyparts but found ${bodyParts.length()}`
 
                 }
             };
@@ -367,10 +361,10 @@ service /contestService on new http:Listener(9098) {
         }
 
         if !bodyPartMap.hasKey("title") || !bodyPartMap.hasKey("readme") ||
-            !bodyPartMap.hasKey("startTime") || !bodyPartMap.hasKey("endTime") || !bodyPartMap.hasKey("moderator") {
+            !bodyPartMap.hasKey("startTime") || !bodyPartMap.hasKey("endTime") || !bodyPartMap.hasKey("moderator")|| !bodyPartMap.hasKey("bannerImage") {
             return <http:BadRequest>{
                 body: {
-                    message: string `Expects 4 bodyparts with names 'title', 'readme', 'startTime', 'endTime' and 'moderator'`
+                    message: string `Expects 6 bodyparts with names 'title', 'readme', 'bannerImage', 'startTime', 'endTime' and 'moderator'`
                 }
             };
         }
@@ -380,7 +374,7 @@ service /contestService on new http:Listener(9098) {
             title: check bodyPartMap.get("title").getText(),
             readmeFile: check readEntityToByteArray("readme", bodyPartMap),
             moderatorId: check bodyPartMap.get("moderator").getText(),
-            imageUrl: "",
+            imageUrl: check readEntityToByteArray("bannerImage", bodyPartMap),
             startTime: check readEntityToTime("startTime", bodyPartMap),
             endTime: check readEntityToTime("endTime", bodyPartMap)
         };
@@ -551,6 +545,7 @@ service /contestService on new http:Listener(9098) {
             moderator: "",
             startTime: {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0},
             readme: [],
+            imageUrl: [],
             endTime: {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0},
             title: ""
         };
@@ -559,6 +554,7 @@ service /contestService on new http:Listener(9098) {
         time:Civil startTime = {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0};
         time:Civil endTime = {year: 0, month: 0, day: 0, hour: 0, minute: 0, second: 0};
         byte[] readme = [];
+        byte[] imageUrl = [];
 
         entities:Contest|persist:Error entityContest = self.db->/contests/[contestId];
         if entityContest is persist:NotFoundError {
@@ -577,6 +573,7 @@ service /contestService on new http:Listener(9098) {
             contestData.readme = entityContest.readmeFile;
             contestData.endTime = entityContest.endTime;
             contestData.title = entityContest.title;
+            contestData.imageUrl = entityContest.imageUrl;
         }
 
         mime:Entity[]|http:ClientError bodyParts = request.getBodyParts();
@@ -615,11 +612,17 @@ service /contestService on new http:Listener(9098) {
             } else {
                 readme = contestData.readme;
             }
+            if bodyPartMap.hasKey("bannerImage") {
+                imageUrl = check readEntityToByteArray("bannerImage", bodyPartMap);
+            } else {
+                imageUrl = contestData.imageUrl;
+            }
             contestUpdate = {
                 title: title,
                 startTime: startTime,
                 endTime: endTime,
-                readmeFile: readme
+                readmeFile: readme,
+                imageUrl: imageUrl
             };
         } on fail var e {
             return <http:InternalServerError>{
@@ -644,7 +647,8 @@ service /contestService on new http:Listener(9098) {
                 title: updatedContest.title,
                 startTime: updatedContest.startTime,
                 endTime: updatedContest.endTime,
-                readmeFile: updatedContest.readmeFile
+                readmeFile: updatedContest.readmeFile,
+                imageUrl: updatedContest.imageUrl
             };
             toBeUpdatedContest["contestId"] = contestId;
             return toBeUpdatedContest;
@@ -792,6 +796,7 @@ function toSharedContestOut(SharedContest contest) returns SharedContestOut => {
     contestId: contest.contest.id,
     title: contest.contest.title,
     readmeFile: contest.contest.readmeFile,
+    imageUrl: contest.contest.imageUrl,
     startTime: contest.contest.startTime,
     endTime: contest.contest.endTime,
     moderator: contest.contest.moderatorId,
@@ -842,6 +847,7 @@ function toDataModelContest(entities:Contest contest) returns data_model:Contest
     contestId: contest.id,
     title: contest.title,
     readme: contest.readmeFile,
+    imageUrl: contest.imageUrl,
     startTime: contest.startTime,
     endTime: contest.endTime,
     moderator: contest.moderatorId
@@ -854,7 +860,7 @@ function fromDataModelContest(data_model:Contest contest, string contestId) retu
     startTime: contest.startTime,
     endTime: contest.endTime,
     moderatorId: contest.moderator,
-    imageUrl: ""
+    imageUrl: contest.imageUrl
 };
 
 function readEntityToByteArray(string entityName, map<mime:Entity> entityMap) returns byte[]|error {

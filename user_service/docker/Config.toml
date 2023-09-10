@@ -7,7 +7,7 @@ contestantGroupId = <<CONTESTANT_GROUP_ID>>
 [ballroom.entities]
 host = "mysql"
 port = 3306
-user = "root"
-password = "hwDBroot123"
+user = "ballroom_sql"
+password = "ballroomadmin123"
 database = "ballroomdb"
 connectionOptions = {ssl = {allowPublicKeyRetrieval = true}}
