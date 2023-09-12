@@ -1,6 +1,6 @@
 [container.image]
 name = "user-service"
-repository = "ballroom"
+repository = "swr.ap-southeast-1.myhuaweicloud.com/ballroom"
 tag = "latest"
 
 [cloud.deployment]

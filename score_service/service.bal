@@ -83,7 +83,7 @@ service rabbitmq:Service on channelListener {
 # // The service-level CORS config applies globally to each `resource`.
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["https://localhost:3000"],
+        allowOrigins: ["https://localhost:3000","https://ballroom.ballerina.io"],
         allowCredentials: true,
         allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],

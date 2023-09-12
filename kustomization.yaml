@@ -6,13 +6,64 @@ resources:
   - contest-service/target/kubernetes/contest_service/contest_service.yaml
   - challenge-service/target/kubernetes/challenge_service/challenge_service.yaml
   # - bff/target/kubernetes/bff/bff.yaml
-  - mysql.yaml
-  - rabbitmq.yaml
+  # - mysql.yaml
+  # - rabbitmq.yaml
   - ingress.yaml
 
-configMapGenerator:
-  - name: mysql-initdb-config
-    files:
-      - ./entity_model/persist/script.sql
-generatorOptions:
-  disableNameSuffixHash: true
+# configMapGenerator:
+#   - name: mysql-initdb-config
+#     files:
+#       - ./entity_model/persist/script.sql
+# generatorOptions:
+#   disableNameSuffixHash: true
+
+
+patches:
+  - target:
+      kind: Deployment
+      name: user-service-deployment
+    patch: | 
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+        - name: default-secret
+  - target:
+      kind: Deployment
+      name: upload-service-deployment
+    patch: | 
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+        - name: default-secret
+  - target:
+      kind: Deployment
+      name: score-service-deployment
+    patch: | 
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+        - name: default-secret
+  - target:
+      kind: Deployment
+      name: executor-servic-deployment
+    patch: | 
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+        - name: default-secret
+  - target:
+      kind: Deployment
+      name: contest-service-deployment
+    patch: | 
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+        - name: default-secret
+  - target:
+      kind: Deployment
+      name: challenge-servi-deployment
+    patch: | 
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+        - name: default-secret

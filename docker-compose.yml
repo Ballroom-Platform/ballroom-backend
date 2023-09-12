@@ -18,7 +18,7 @@ services:
   rabbitmq:
     image: rabbitmq
   user:
-    image: ballroom/user-service:latest
+    image: swr.ap-southeast-1.myhuaweicloud.com/ballroom/user-service:latest
     volumes:
       - type: bind
         source: ./user_service/docker/Config.toml
@@ -29,7 +29,7 @@ services:
     links:
       - mysql
   upload:
-    image: ballroom/upload-service:latest
+    image: swr.ap-southeast-1.myhuaweicloud.com/ballroom/upload-service:latest
     volumes:
       - type: bind
         source: ./upload-service/docker/Config.toml
@@ -43,7 +43,7 @@ services:
       - mysql
       - rabbitmq
   score:
-    image: ballroom/score-service:latest
+    image: swr.ap-southeast-1.myhuaweicloud.com/ballroom/score-service:latest
     volumes:
       - type: bind
         source: ./score_service/docker/Config.toml
@@ -60,7 +60,7 @@ services:
       - rabbitmq
       - user
   executor:
-    image: ballroom/executor-service:latest
+    image: swr.ap-southeast-1.myhuaweicloud.com/ballroom/executor-service:latest
     volumes:
       - type: bind
         source: ./executor-service/docker/Config.toml
@@ -74,7 +74,7 @@ services:
       - mysql
       - rabbitmq
   contest:
-    image: ballroom/contest-service:latest
+    image: swr.ap-southeast-1.myhuaweicloud.com/ballroom/contest-service:latest
     volumes:
       - type: bind
         source: ./contest-service/docker/Config.toml
@@ -85,7 +85,7 @@ services:
     links:
       - mysql
   challenge:
-    image: ballroom/challenge-service:latest
+    image: swr.ap-southeast-1.myhuaweicloud.com/ballroom/challenge-service:latest
     volumes:
       - type: bind
         source: ./challenge-service/docker/Config.toml
@@ -96,7 +96,7 @@ services:
     links:
       - mysql
   bff:
-    image: ballroom/bff-service:latest
+    image: swr.ap-southeast-1.myhuaweicloud.com/ballroom/bff-service:latest
     volumes:
       - type: bind
         source: ./bff/docker/Config.toml
