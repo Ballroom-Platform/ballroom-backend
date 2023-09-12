@@ -8,10 +8,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - demo.localdev.me
+    - api.ballroom.ballerina.io
     secretName: quickstart-example-tls
   rules:
-  - host: demo.localdev.me
+  - host: api.ballroom.ballerina.io
     http:
       paths:
       - backend:
@@ -49,5 +49,27 @@ spec:
               number: 9095
         path: /userService/(.*)
         pathType: ImplementationSpecific
-status:
-  loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - ballroom.ballerina.io
+    secretName: quickstart-example-tls1
+  rules:
+  - host: ballroom.ballerina.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: react-app
+            port:
+              number: 3000
+        path: /
+        pathType: Prefix

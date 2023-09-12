@@ -29,7 +29,7 @@ configurable string submissionServiceUrl = ?;
 }
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["https://localhost:3000"],
+        allowOrigins: ["https://localhost:3000","https://ballroom.ballerina.io"],
         allowCredentials: true,
         allowHeaders: ["CORELATION_ID", "Authorization", "Content-Type", "authorization", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
