@@ -26,3 +26,13 @@ After cloning the repository, switch to "m2" branch and follow the steps provide
 2.) Run `kubectl port-forward --namespace=ingress-nginx service/ingress-nginx-controller 8080:80` to expose the ingress to the host machine.
 
 3.) Once all services are up and running, launch the frontend application by running `npm start` in the frontend repo.
+
+## Setup Asgardeo account
+
+You can follow the steps below to create an [Asgardeo](https://wso2.com/asgardeo/) account and obtain the necessary credentials:
+
+1.) Create a ['Single Page Application'](https://wso2.com/asgardeo/docs/guides/applications/register-single-page-app/#get-the-client-id) in the Asgardeo Console. Use its client ID for the frontend. Use the refresh token grant type.
+
+2.) Create a ['Standard Based Application'](https://wso2.com/asgardeo/docs/guides/applications/register-standard-based-app/#register-an-application) in the Asgardeo Console. Use its client ID and client secret for the backend.  Use the client credential grant type.
+
+3.) Create [two Groups](https://wso2.com/asgardeo/docs/guides/users/manage-groups/#onboard-a-group) named 'Admin' and 'Contestant' in the Asgardeo Console. Use their IDs for the backend.
