@@ -96,6 +96,10 @@ Go to the challenge details page which you need to share with another admin, sel
 
 * Start/edit/delete the contest anytime by clicking the respect button on the contest detail page as shown below,
 
+    ![Manage a contest](./images/manage_contest.png)
+
+* Update the contest details in the "Edit Contest" page as shown below,
+
     ![Edit a contest](./images/edit_contest.png)
 
 * View the Leaderboard of the ongoing and ended contests
@@ -124,8 +128,13 @@ Select a contest and click "Register" to participate as shown below. You can reg
 #### Section 4: Selecting a Challenge
 Inside the contest, review the list of challenges. Choose a challenge that piques your interest and click to access details.
 
+![Challenges page](./images/challenges_page.png)
+
 #### Section 5: Working on the Challenge
-Study the challenge description, criteria, and integration requirements. Understand what's expected for successful completion. And then begin working on the challenge by downloading the provided template and opening it in VSCode. 
+Study the challenge description, criteria, and integration requirements. Understand what's expected for successful completion. And then begin working on the challenge by downloading the provided template and opening it in VSCode.
+
+![Challenge details page](./images/challenge_details_page.png)
+
 Implement the integration logic in the template and test it locally. Once you're satisfied with the solution, upload it to the Ballroom platform.
 
 #### Submitting Your Solution
@@ -133,6 +142,8 @@ Once your solution is ready, submit it by following the provided submission inst
 
 #### Monitoring Progress
 After submitting, monitor your progress on the real-time leaderboard. See how your scores compare to other participants.
+
+![Leaderboard](./images/contestant_leaderboard.png)
 
 
 
