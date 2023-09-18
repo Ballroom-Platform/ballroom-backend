@@ -109,5 +109,3 @@ The eligibility criteria defines the minimum you need to do. You must be among t
 **6. What if I'm eligible for the consolation prizes but tied at rank 50?**
 
 In case of a tie, the total time taken to complete the challenge is considered in the ascending order. Therefore, try to complete the challenge as soon as possible.
-
-**By participating in this campaign, I agree to applicable [Terms and Services](https://s3-ap-southeast-1.amazonaws.com/he-public-data/Ballerina Coding Challenge - T&C28b3f1b.pdf).**
