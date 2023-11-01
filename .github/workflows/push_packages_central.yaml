@@ -1,0 +1,34 @@
+name: Push Packages to Ballerina Central
+
+on:
+    workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Install Ballerina
+      uses: ballerina-platform/setup-ballerina@v1
+      with:
+        version: 2201.6.0
+
+    - name: Update .ballerina file
+      run: |
+        echo "[central]" >> .ballerina
+        echo "accesstoken=${{ secrets.BALLROOM_ACCESS_TOKEN }}" >> .ballerina
+      working-directory: ${{ github.workspace }}
+
+    - name: Pack and push data model
+      working-directory: "data-model"
+      run: |
+        bal pack
+        bal push
+
+    - name: Pack and push entity model
+      working-directory: "entity_model"
+      run: |
+        bal persist generate
+        bal pack
+        bal push
+
