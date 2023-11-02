@@ -11,10 +11,8 @@ observabilityIncluded = true
 org = "ballroom"
 name = "data_model"
 version = "0.1.0"
-repository="local"
 
 [[dependency]]
 org = "ballroom"
 name = "entities"
 version = "0.1.0"
-repository="local"
