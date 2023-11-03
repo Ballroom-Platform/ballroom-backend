@@ -17,10 +17,10 @@
 import ballerina/io;
 import ballerinax/rabbitmq;
 import ballerina/file;
-import ballroom/data_model;
+import tharinduu/data_model;
 import ballerina/regex;
 import ballerina/log;
-import ballroom/entities;
+import tharinduu/entities;
 import executor_service.utils as utils;
 import ballerina/persist;
 

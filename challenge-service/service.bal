@@ -15,12 +15,12 @@
 // under the License.
 
 import ballerina/http;
-import ballroom/data_model;
+import tharinduu/data_model;
 import ballerina/io;
 import ballerina/mime;
 import ballerina/uuid;
 import ballerina/log;
-import ballroom/entities;
+import tharinduu/entities;
 import ballerina/persist;
 import ballerina/time;
 

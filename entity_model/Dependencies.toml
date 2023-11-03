@@ -68,7 +68,7 @@ modules = [
 [[package]]
 org = "ballerina"
 name = "sql"
-version = "1.9.0"
+version = "1.9.1"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -137,7 +137,7 @@ modules = [
 ]
 
 [[package]]
-org = "ballroom"
+org = "tharinduu"
 name = "entities"
 version = "0.1.0"
 dependencies = [
@@ -150,6 +150,6 @@ dependencies = [
 	{org = "ballerinax", name = "persist.sql"}
 ]
 modules = [
-	{org = "ballroom", packageName = "entities", moduleName = "entities"}
+	{org = "tharinduu", packageName = "entities", moduleName = "entities"}
 ]
 

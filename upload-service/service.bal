@@ -19,11 +19,11 @@ import ballerina/mime;
 import ballerina/io;
 import ballerinax/rabbitmq;
 import ballerina/uuid;
-import ballroom/data_model;
+import tharinduu/data_model;
 import ballerina/log;
 import ballerina/time;
 import ballerina/persist;
-import ballroom/entities;
+import tharinduu/entities;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;

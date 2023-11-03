@@ -16,8 +16,8 @@
 
 import ballerina/http;
 import ballerina/log;
-import ballroom/data_model;
-import ballroom/entities;
+import tharinduu/data_model;
+import tharinduu/entities;
 import ballerinax/scim;
 import ballerina/mime;
 import ballerina/persist;

@@ -14,11 +14,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballroom/data_model;
+import tharinduu/data_model;
 import score_service.user;
-import ballroom/entities;
+import tharinduu/entities;
 import ballerina/persist;
-import ballroom/data_model.registry;
+import tharinduu/data_model.registry;
 
 public type Payload record {
     string message;

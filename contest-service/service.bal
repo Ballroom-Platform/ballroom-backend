@@ -20,8 +20,8 @@ import ballerina/uuid;
 import ballerina/log;
 import ballerina/persist;
 
-import ballroom/data_model;
-import ballroom/entities;
+import tharinduu/data_model;
+import tharinduu/entities;
 import ballerina/mime;
 import ballerina/io;
 

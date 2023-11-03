@@ -32,14 +32,6 @@ dependencies = [
 
 [[package]]
 org = "ballerina"
-name = "cloud"
-version = "2.7.0"
-modules = [
-	{org = "ballerina", packageName = "cloud", moduleName = "cloud"}
-]
-
-[[package]]
-org = "ballerina"
 name = "constraint"
 version = "1.2.0"
 dependencies = [
@@ -69,7 +61,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "http"
-version = "2.8.2"
+version = "2.8.3"
 dependencies = [
 	{org = "ballerina", name = "auth"},
 	{org = "ballerina", name = "cache"},
@@ -279,7 +271,7 @@ modules = [
 [[package]]
 org = "ballerina"
 name = "sql"
-version = "1.9.0"
+version = "1.9.1"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -401,6 +393,7 @@ org = "ballroom"
 name = "data_model"
 version = "0.1.0"
 dependencies = [
+	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "sql"},
 	{org = "ballerina", name = "time"},
 	{org = "ballerinai", name = "observe"}
@@ -432,7 +425,6 @@ org = "ballroom"
 name = "score_service"
 version = "0.1.0"
 dependencies = [
-	{org = "ballerina", name = "cloud"},
 	{org = "ballerina", name = "http"},
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "log"},
@@ -443,10 +435,43 @@ dependencies = [
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "rabbitmq"},
 	{org = "ballroom", name = "data_model"},
-	{org = "ballroom", name = "entities"}
+	{org = "ballroom", name = "entities"},
+	{org = "tharinduu", name = "data_model"},
+	{org = "tharinduu", name = "entities"}
 ]
 modules = [
 	{org = "ballroom", packageName = "score_service", moduleName = "score_service"},
 	{org = "ballroom", packageName = "score_service", moduleName = "score_service.user"}
+]
+
+[[package]]
+org = "tharinduu"
+name = "data_model"
+version = "0.1.0"
+dependencies = [
+	{org = "ballerina", name = "sql"},
+	{org = "ballerina", name = "time"},
+	{org = "ballerinai", name = "observe"}
+]
+modules = [
+	{org = "tharinduu", packageName = "data_model", moduleName = "data_model"},
+	{org = "tharinduu", packageName = "data_model", moduleName = "data_model.registry"}
+]
+
+[[package]]
+org = "tharinduu"
+name = "entities"
+version = "0.1.0"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "persist"},
+	{org = "ballerina", name = "time"},
+	{org = "ballerinai", name = "observe"},
+	{org = "ballerinax", name = "mysql"},
+	{org = "ballerinax", name = "mysql.driver"},
+	{org = "ballerinax", name = "persist.sql"}
+]
+modules = [
+	{org = "tharinduu", packageName = "entities", moduleName = "entities"}
 ]
 

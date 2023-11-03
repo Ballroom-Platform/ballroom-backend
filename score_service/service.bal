@@ -15,11 +15,11 @@
 // under the License.
 
 import ballerinax/rabbitmq;
-import ballroom/data_model;
+import tharinduu/data_model;
 import ballerina/http;
 import ballerina/time;
 import ballerina/log;
-import ballroom/entities;
+import tharinduu/entities;
 import ballerina/persist;
 
 configurable string rabbitmqHost = ?;
