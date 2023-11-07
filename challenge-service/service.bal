@@ -25,6 +25,13 @@ import ballerina/persist;
 import ballerina/time;
 import ballerinax/mysql;
 
+configurable int port = ?;
+configurable string host = ?;
+configurable string user = ?;
+configurable string database = ?;
+configurable string password = ?;
+configurable mysql:Options & readonly connectionOptions = {};
+
 type UpdatedChallenge record {
     string title;
     string difficulty;
@@ -86,13 +93,6 @@ type ChallengeAccessAdminsOut record {|
         maxAge: 84900
     }
 }
-
-configurable int port = ?;
-configurable string host = ?;
-configurable string user = ?;
-configurable string database = ?;
-configurable string password = ?;
-configurable mysql:Options & readonly connectionOptions = {};
 
 service /challengeService on new http:Listener(9096) {
     private final entities:Client db;
