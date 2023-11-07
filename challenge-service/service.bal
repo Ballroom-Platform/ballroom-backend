@@ -23,6 +23,7 @@ import ballerina/log;
 import tharinduu/entities;
 import ballerina/persist;
 import ballerina/time;
+import ballerinax/mysql;
 
 type UpdatedChallenge record {
     string title;
@@ -97,7 +98,7 @@ service /challengeService on new http:Listener(9096) {
     private final entities:Client db;
 
     function init() returns error? {
-        self.db = check new (port, host, user, database, password, connectionOptions);
+        self.db = check new (host, port, user, database, password, connectionOptions);
         log:printInfo("Challenge service started...");
     }
 
