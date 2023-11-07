@@ -85,11 +85,19 @@ type ChallengeAccessAdminsOut record {|
         maxAge: 84900
     }
 }
+
+configurable int port = ?;
+configurable string host = ?;
+configurable string user = ?;
+configurable string database = ?;
+configurable string password = ?;
+configurable mysql:Options & readonly connectionOptions = {};
+
 service /challengeService on new http:Listener(9096) {
     private final entities:Client db;
 
     function init() returns error? {
-        self.db = check new ();
+        self.db = check new (port, host, user, database, password, connectionOptions);
         log:printInfo("Challenge service started...");
     }
 
