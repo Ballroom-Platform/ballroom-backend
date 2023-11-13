@@ -19,6 +19,7 @@ import ballerina/time;
 import ballerina/uuid;
 import ballerina/log;
 import ballerina/persist;
+import ballerinax/mysql;
 
 import tharinduu/data_model;
 import tharinduu/entities;
