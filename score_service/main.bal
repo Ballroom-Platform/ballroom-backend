@@ -19,6 +19,7 @@ import score_service.user;
 import tharinduu/entities;
 import ballerina/persist;
 import tharinduu/data_model.registry;
+import ballerinax/mysql;
 
 public type Payload record {
     string message;
