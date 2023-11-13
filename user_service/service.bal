@@ -21,6 +21,7 @@ import tharinduu/entities;
 import ballerinax/scim;
 import ballerina/mime;
 import ballerina/persist;
+import ballerinax/mysql;
 
 configurable string orgName = ?;
 configurable string clientId = ?;
