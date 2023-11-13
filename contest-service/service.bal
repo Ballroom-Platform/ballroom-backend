@@ -25,6 +25,13 @@ import tharinduu/entities;
 import ballerina/mime;
 import ballerina/io;
 
+configurable int port = ?;
+configurable string host = ?;
+configurable string user = ?;
+configurable string database = ?;
+configurable string password = ?;
+configurable mysql:Options & readonly connectionOptions = {};
+
 type UpdatedContest record {
     string title?;
     time:Civil startTime?;

@@ -30,6 +30,13 @@ configurable int rabbitmqPort = ?;
 configurable string rabbitmqUser = ?;
 configurable string rabbitmqPassword = ?;
 
+configurable int port = ?;
+configurable string host = ?;
+configurable string user = ?;
+configurable string database = ?;
+configurable string password = ?;
+configurable mysql:Options & readonly connectionOptions = {};
+
 final entities:Client db = check new (host, port, user, database, password, connectionOptions);
 rabbitmq:ConnectionConfiguration config = {
         username: rabbitmqUser,

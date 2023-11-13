@@ -50,6 +50,13 @@ public type Role record {
     json[] groups;
 };
 
+configurable int port = ?;
+configurable string host = ?;
+configurable string user = ?;
+configurable string database = ?;
+configurable string password = ?;
+configurable mysql:Options & readonly connectionOptions = {};
+
 final entities:Client db = check new (host, port, user, database, password, connectionOptions);
 
 # A service representing a network-accessible API

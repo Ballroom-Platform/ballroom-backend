@@ -28,6 +28,13 @@ type challengeDifficulty record {|
     string difficulty;
 |};
 
+configurable int port = ?;
+configurable string host = ?;
+configurable string user = ?;
+configurable string database = ?;
+configurable string password = ?;
+configurable mysql:Options & readonly connectionOptions = {};
+
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
 configurable string rabbitmqUser = ?;
