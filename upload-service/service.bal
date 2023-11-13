@@ -24,6 +24,7 @@ import ballerina/log;
 import ballerina/time;
 import ballerina/persist;
 import tharinduu/entities;
+import ballerinax/mysql;
 
 configurable string rabbitmqHost = ?;
 configurable int rabbitmqPort = ?;
