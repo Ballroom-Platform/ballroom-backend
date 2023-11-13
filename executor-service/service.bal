@@ -45,7 +45,7 @@ rabbitmq:QosSettings qosSettings = {
 // The consumer service listens to the "RequestQueue" queue.
 // listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort);
 listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort, qosSettings, config);
-entities:Client db = check new ();
+entities:Client db = check new (host, port, user, database, password, connectionOptions);
 
 @rabbitmq:ServiceConfig {
     queueName: data_model:QUEUE_NAME

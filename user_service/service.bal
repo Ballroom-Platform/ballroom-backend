@@ -50,7 +50,7 @@ public type Role record {
     json[] groups;
 };
 
-final entities:Client db = check new ();
+final entities:Client db = check new (host, port, user, database, password, connectionOptions);
 
 # A service representing a network-accessible API
 # bound to port `9090`.

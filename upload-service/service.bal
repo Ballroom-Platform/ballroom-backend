@@ -30,7 +30,7 @@ configurable int rabbitmqPort = ?;
 configurable string rabbitmqUser = ?;
 configurable string rabbitmqPassword = ?;
 
-final entities:Client db = check new ();
+final entities:Client db = check new (host, port, user, database, password, connectionOptions);
 rabbitmq:ConnectionConfiguration config = {
         username: rabbitmqUser,
         password: rabbitmqPassword

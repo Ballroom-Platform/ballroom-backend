@@ -145,7 +145,7 @@ service /contestService on new http:Listener(9098) {
     private final entities:Client db;
 
     function init() returns error? {
-        self.db = check new ();
+        self.db = check new (host, port, user, database, password, connectionOptions);
         log:printInfo("Contest service started...");
     }
 
