@@ -80,7 +80,7 @@ service /userService on new http:Listener(9095) {
     private final scim:Client scimClient;
 
     function init() returns error? {
-        self.db = check new ();
+        self.db = check new (host, port, user, database, password, connectionOptions);
         self.scimClient = check new (config);
         log:printInfo("User service started...");
     }
