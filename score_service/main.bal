@@ -25,7 +25,14 @@ public type Payload record {
     anydata data;
 };
 
-final entities:Client db = check new ();
+configurable int port = ?;
+configurable string host = ?;
+configurable string user = ?;
+configurable string database = ?;
+configurable string password = ?;
+configurable mysql:Options & readonly connectionOptions = {};
+
+final entities:Client db = check new (host, port, user, database, password, connectionOptions);
 
 @display {
     label: "User Service",
