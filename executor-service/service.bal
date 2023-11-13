@@ -23,6 +23,7 @@ import ballerina/log;
 import tharinduu/entities;
 import executor_service.utils as utils;
 import ballerina/persist;
+import ballerinax/mysql;
 
 type challengeDifficulty record {|
     string difficulty;
