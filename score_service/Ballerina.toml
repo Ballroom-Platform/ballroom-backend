@@ -10,7 +10,7 @@ observabilityIncluded = true
 [[dependency]]
 org = "tharinduu"
 name = "data_model"
-version = "0.1.0"
+version = "0.2.0"
 
 [[dependency]]
 org = "tharinduu"
