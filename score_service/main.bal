@@ -39,7 +39,7 @@ final entities:Client db = check new (host, port, user, database, password, conn
     label: "User Service",
     id: "UserService"
 }
-final user:Client userService = check new (serviceUrl = check registry:lookup("\"ballroom/UserService\""));
+final user:Client userService = check new (serviceUrl = "http://userservice-985653509:9095/userService");
 
 isolated function getSubmissionList(string userId, string contestId, string challengeId) returns Submission[]|persist:Error? {
     stream<entities:Submission, persist:Error?> submissionStream = db->/submissions;
