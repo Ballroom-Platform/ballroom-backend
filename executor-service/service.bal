@@ -56,7 +56,7 @@ listener rabbitmq:Listener channelListener = new (rabbitmqHost, rabbitmqPort, qo
 entities:Client db = check new (host, port, user, database, password, connectionOptions);
 
 @rabbitmq:ServiceConfig {
-    queueName: data_model:QUEUE_NAME
+    queueName: "RequestQueue"
 }
 service rabbitmq:Service on channelListener {
 
