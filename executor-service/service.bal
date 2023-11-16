@@ -43,8 +43,7 @@ configurable string rabbitmqPassword = ?;
 
 rabbitmq:ConnectionConfiguration config = {
     username: rabbitmqUser,
-    password: rabbitmqPassword,
-    virtualHost: rabbitmqUser
+    password: rabbitmqPassword
 };
 
 rabbitmq:QosSettings qosSettings = {
