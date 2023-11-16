@@ -41,7 +41,8 @@ configurable mysql:Options & readonly connectionOptions = {};
 final entities:Client db = check new (host, port, user, database, password, connectionOptions);
 rabbitmq:ConnectionConfiguration config = {
         username: rabbitmqUser,
-        password: rabbitmqPassword
+        password: rabbitmqPassword,
+        virtualHost: rabbitmqUser
     };
 
 # A service representing a network-accessible API
