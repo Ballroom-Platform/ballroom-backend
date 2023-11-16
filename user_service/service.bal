@@ -81,6 +81,7 @@ service /userService on new http:Listener(9095) {
 
     function init() returns error? {
         self.db = check new (host, port, user, database, password, connectionOptions);
+        log:printInfo(config.toBalString());
         self.scimClient = check new (config);
         log:printInfo("User service started...");
     }
