@@ -1,0 +1,8 @@
+version: 0.1
+
+endpoints:
+- name: Ballroom BFF
+  port: 9099
+  type: http
+  visibility: Public
+  context: /
