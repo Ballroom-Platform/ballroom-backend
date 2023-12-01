@@ -68,7 +68,7 @@ final entities:Client db = check new (host, port, user, database, password, conn
 }
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["https://localhost:3000","https://ballroom.ballerina.io"],
+        allowOrigins: ["https://localhost:3000","https://ballroom.ballerina.io","https://bf76bdf6-c8a9-4aa0-ab62-1c36858b0358.e1-us-east-azure.choreoapps.dev"],
         allowCredentials: true,
         allowHeaders: ["CORELATION_ID", "Authorization", "Content-type", "ngrok-skip-browser-warning"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
