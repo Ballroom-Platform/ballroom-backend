@@ -70,7 +70,7 @@ final entities:Client db = check new (host, port, user, database, password, conn
     cors: {
         allowOrigins: ["*"],
         allowCredentials: true,
-        allowHeaders: ["CORELATION_ID", "Authorization", "Content-type", "ngrok-skip-browser-warning","Access-Control-Allow-Origin"],
+        allowHeaders: ["CORELATION_ID", "Content-type", "ngrok-skip-browser-warning","Access-Control-Allow-Origin"],
         exposeHeaders: ["X-CUSTOM-HEADER"],
         maxAge: 84900
     }
