@@ -186,7 +186,7 @@ service /userService on new http:Listener(9095) {
         }
     }
 
-    resource isolated function get users/[string userId]/roles() returns http:Response|http:NotFound|http:InternalServerError {
+    resource isolated function get users/[string userId]/roles() returns Payload|http:NotFound|http:InternalServerError {
         scim:UserResource|scim:ErrorResponse|error userData = self.scimClient->getUser(userId);
         if userData is scim:UserResource {
             json groups = userData.toJson();
@@ -201,26 +201,13 @@ service /userService on new http:Listener(9095) {
                     return http:INTERNAL_SERVER_ERROR;
                 } else {
                     string role = roleJson.toString().substring(8);
-
-                    // Creating the response payload
                     Payload responsePayload = {
                         message: "Role found",
                         data: {
                             "role": role
                         }
                     };
-
-                    // Creating the HTTP response
-                    http:Response response = new;
-
-                    // Adding the 'Access-Control-Allow-Origin' header
-                    response.addHeader("Access-Control-Allow-Origin", "*"); // You may replace "*" with the specific origin
-
-                    // Setting the payload to the response
-                    response.setJsonPayload(responsePayload.toJson());
-
-                    // Sending the response
-                    return response; 
+                    return responsePayload;
                 }
             }
         } else if userData is scim:ErrorResponse {
@@ -231,7 +218,6 @@ service /userService on new http:Listener(9095) {
             return http:INTERNAL_SERVER_ERROR;
         }
     }
-
 
     resource isolated function post users(http:Request request) returns string|http:BadRequest|http:InternalServerError|http:Conflict|error {
         mime:Entity[] bodyParts = check request.getBodyParts();
